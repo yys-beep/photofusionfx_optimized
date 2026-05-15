@@ -1,0 +1,116 @@
+.root {
+    -fx-font-family: "Inter", "Segoe UI", "Helvetica Neue", Arial, sans-serif;
+    -fx-base: #f4f7fb;
+    -fx-background: #f4f7fb;
+    -fx-control-inner-background: white;
+}
+
+.label {
+    -fx-text-fill: #152033;
+}
+
+.status-bar {
+    -fx-background-color: linear-gradient(to right, #0f172a, #1e293b);
+}
+
+.status-bar .label {
+    -fx-text-fill: #edf2ff;
+}
+
+.preview-box {
+    -fx-background-color: white;
+    -fx-background-radius: 16;
+    -fx-border-color: #d8e0ef;
+    -fx-border-radius: 16;
+    -fx-effect: dropshadow(gaussian, rgba(15, 23, 42, 0.08), 20, 0.10, 0, 6);
+}
+
+.thumbnail-card {
+    -fx-background-color: white;
+    -fx-background-radius: 16;
+    -fx-border-color: #dce4f3;
+    -fx-border-radius: 16;
+    -fx-effect: dropshadow(gaussian, rgba(15, 23, 42, 0.05), 12, 0.08, 0, 4);
+}
+
+.selected-thumbnail {
+    -fx-border-color: #2563eb;
+    -fx-border-width: 2;
+}
+
+.thumbnail-image-box {
+    -fx-background-color: #eef3fb;
+    -fx-background-radius: 12;
+    -fx-border-color: #d6e0f1;
+    -fx-border-radius: 12;
+}
+
+.thumbnail-caption {
+    -fx-font-weight: 600;
+    -fx-font-size: 12px;
+}
+
+.heart-badge {
+    -fx-text-fill: #dc2626;
+    -fx-font-size: 22px;
+    -fx-padding: 6 10 0 0;
+}
+
+.star-badge {
+    -fx-text-fill: #f59e0b;
+    -fx-font-size: 18px;
+    -fx-padding: 8 0 0 10;
+}
+
+.field-title {
+    -fx-text-fill: #64748b;
+    -fx-font-size: 11px;
+    -fx-font-weight: 700;
+}
+
+.button {
+    -fx-background-color: linear-gradient(to bottom, #ffffff, #eef3fb);
+    -fx-border-color: #d6deec;
+    -fx-border-radius: 10;
+    -fx-background-radius: 10;
+    -fx-padding: 8 14 8 14;
+    -fx-font-weight: 600;
+}
+
+.button:hover {
+    -fx-background-color: linear-gradient(to bottom, #ffffff, #e8f0ff);
+}
+
+.danger-button {
+    -fx-background-color: linear-gradient(to bottom, #fee2e2, #fecaca);
+    -fx-border-color: #fca5a5;
+}
+
+.text-area,
+.text-field,
+.password-field,
+.combo-box,
+.spinner,
+.scroll-pane {
+    -fx-background-radius: 10;
+    -fx-border-radius: 10;
+}
+
+.section-card {
+    -fx-background-color: white;
+    -fx-background-radius: 16;
+    -fx-border-color: #d8e0ef;
+    -fx-border-radius: 16;
+    -fx-padding: 16;
+}
+
+.success-button {
+    -fx-background-color: linear-gradient(to bottom, #dcfce7, #bbf7d0);
+    -fx-border-color: #86efac;
+}
+
+.list-view {
+    -fx-background-radius: 12;
+    -fx-border-radius: 12;
+    -fx-border-color: #d8e0ef;
+}
