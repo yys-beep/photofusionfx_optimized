@@ -16,27 +16,10 @@ import javafx.geometry.Insets;
 import javafx.geometry.Pos;
 import javafx.scene.canvas.Canvas;
 import javafx.scene.canvas.GraphicsContext;
-import javafx.scene.control.Button;
-import javafx.scene.control.CheckBox;
-import javafx.scene.control.ColorPicker;
-import javafx.scene.control.ComboBox;
-import javafx.scene.control.Label;
-import javafx.scene.control.ListCell;
-import javafx.scene.control.ListView;
-import javafx.scene.control.ScrollPane;
-import javafx.scene.control.Separator;
-import javafx.scene.control.Slider;
-import javafx.scene.control.Spinner;
-import javafx.scene.control.SpinnerValueFactory;
-import javafx.scene.control.TextField;
+import javafx.scene.control.*;
 import javafx.scene.image.Image;
 import javafx.scene.input.Clipboard;
-import javafx.scene.layout.BorderPane;
-import javafx.scene.layout.HBox;
-import javafx.scene.layout.Pane;
-import javafx.scene.layout.Priority;
-import javafx.scene.layout.Region;
-import javafx.scene.layout.VBox;
+import javafx.scene.layout.*;
 import javafx.scene.paint.Color;
 import javafx.scene.text.Font;
 import javafx.stage.FileChooser;
@@ -100,13 +83,59 @@ public class EditorPane extends BorderPane {
         this.context = context;
         setPadding(new Insets(12));
 
-        ScrollPane controlsScroll = new ScrollPane(buildControls());
-        controlsScroll.setFitToWidth(true);
-        controlsScroll.setHbarPolicy(ScrollPane.ScrollBarPolicy.NEVER);
-        controlsScroll.setMinWidth(390);
-        controlsScroll.setStyle("-fx-background-color: transparent;");
-        setLeft(controlsScroll);
-        setCenter(buildCanvasArea());
+        // 1. LEFT PANEL (Toolbox)
+        ScrollPane leftScroll = new ScrollPane(buildToolboxPanel());
+        leftScroll.setFitToWidth(true);
+        leftScroll.setHbarPolicy(ScrollPane.ScrollBarPolicy.NEVER);
+        leftScroll.setMinWidth(250);
+        leftScroll.setStyle("-fx-background-color: transparent;");
+
+        // 2. CENTER CANVAS
+        ScrollPane centerCanvas = buildCanvasArea();
+
+        // 3. RIGHT PANEL (Layers and Assets)
+        ScrollPane rightScroll = new ScrollPane(buildLayersPanel());
+        rightScroll.setFitToWidth(true);
+        rightScroll.setHbarPolicy(ScrollPane.ScrollBarPolicy.NEVER);
+        rightScroll.setMinWidth(250);
+        rightScroll.setStyle("-fx-background-color: transparent;");
+
+        // SPLIT PANE
+        SplitPane splitPane = new SplitPane();
+        splitPane.getItems().addAll(leftScroll, centerCanvas, rightScroll);
+        splitPane.setDividerPositions(0.25, 0.75);
+        setCenter(splitPane);
+
+        // TOP TOOLBAR
+        Button toggleLeftBtn = new Button("👁 Hide Toolbox");
+        Button toggleRightBtn = new Button("👁 Hide Layers");
+
+        toggleLeftBtn.setOnAction(e -> {
+            if (splitPane.getItems().contains(leftScroll)) {
+                splitPane.getItems().remove(leftScroll);
+                toggleLeftBtn.setText("👁 Show Toolbox");
+            } else {
+                splitPane.getItems().add(0, leftScroll);
+                splitPane.setDividerPositions(0.25, 0.75);
+                toggleLeftBtn.setText("👁 Hide Toolbox");
+            }
+        });
+
+        toggleRightBtn.setOnAction(e -> {
+            if (splitPane.getItems().contains(rightScroll)) {
+                splitPane.getItems().remove(rightScroll);
+                toggleRightBtn.setText("👁 Show Layers");
+            } else {
+                splitPane.getItems().add(rightScroll);
+                splitPane.setDividerPositions(0.25, 0.75);
+                toggleRightBtn.setText("👁 Hide Layers");
+            }
+        });
+
+        HBox topToolbar = new HBox(15, toggleLeftBtn, toggleRightBtn);
+        topToolbar.setAlignment(Pos.CENTER);
+        topToolbar.setPadding(new Insets(0, 0, 10, 0));
+        setTop(topToolbar);
 
         debounce.setOnFinished(e -> renderBasePreview());
         registerListeners();
@@ -114,7 +143,7 @@ public class EditorPane extends BorderPane {
         loadSelectedPhoto(context.getSelectedPhoto());
     }
 
-    private VBox buildControls() {
+    private VBox buildToolboxPanel() {
         configureSlider(brightnessSlider, true);
         configureSlider(contrastSlider, false);
         configureSlider(saturationSlider, false);
@@ -124,19 +153,78 @@ public class EditorPane extends BorderPane {
         configureSlider(rotationSlider, true);
         configureSlider(translateXSlider, true);
         configureSlider(translateYSlider, true);
-        configureSlider(fontSizeSlider, true);
-        configureSlider(layerStrokeSlider, true);
-        configureSlider(layerOpacitySlider, false);
 
-        fontFamilyBox.getItems().setAll(Font.getFamilies());
-        fontFamilyBox.getSelectionModel().select(Font.getDefault().getFamily());
-        textField.setPromptText("Text layer content");
-
+        // Resize Spinners setup
         resizeWidthSpinner.setValueFactory(new SpinnerValueFactory.IntegerSpinnerValueFactory(1, 12000, 1024));
         resizeHeightSpinner.setValueFactory(new SpinnerValueFactory.IntegerSpinnerValueFactory(1, 12000, 768));
         resizeWidthSpinner.setEditable(true);
         resizeHeightSpinner.setEditable(true);
         lockAspectCheck.setSelected(true);
+
+        // Reset Buttons
+        Button resetDipBtn = new Button("Reset DIP");
+        resetDipBtn.setOnAction(e -> resetDipControls());
+
+        Button resetTransformBtn = new Button("Reset Transformations");
+        resetTransformBtn.setOnAction(e -> resetTransformControls());
+
+        Button resetAllBtn = new Button("Reset All");
+        resetAllBtn.setOnAction(e -> {
+            resetDipControls();
+            resetTransformControls();
+        });
+        resetAllBtn.getStyleClass().add("danger-button");
+
+        Button exportButton = new Button("Export Composite Image");
+        exportButton.setOnAction(e -> exportCompositeImage(false));
+        exportButton.getStyleClass().add("success-button");
+
+        Button saveToLibraryButton = new Button("Save Composite into Library");
+        saveToLibraryButton.setOnAction(e -> saveCompositeIntoLibrary());
+        saveToLibraryButton.getStyleClass().add("success-button");
+
+        Button resizeButton = new Button("Export Resized Copy");
+        resizeButton.setOnAction(e -> exportResizedCopy());
+
+        VBox controls = new VBox(10,
+                selectedLabel,
+                new Separator(),
+                new Label("Digital Image Processing (DIP)"),
+                sliderRow("Brightness", brightnessSlider),
+                sliderRow("Contrast", contrastSlider),
+                sliderRow("Saturation", saturationSlider),
+                autoEnhanceCheck,
+                grayscaleCheck,
+                labelledControl("Scenario tint", tintColorPicker),
+                sliderRow("Tint Strength", tintStrengthSlider),
+                labelledControl("Border Color", borderColorPicker), // Moved above border width
+                sliderRow("Border Width", borderSlider),
+                resetDipBtn,
+                new Separator(),
+                new Label("Transformations"),
+                sliderRow("Scale", scaleSlider),
+                sliderRow("Rotation", rotationSlider),
+                sliderRow("Translate X", translateXSlider),
+                sliderRow("Translate Y", translateYSlider),
+                resetTransformBtn,
+                new Separator(),
+                resetAllBtn,
+                new Separator(),
+                new Label("Export & Rescaling"),
+                new HBox(10, new Label("W"), resizeWidthSpinner, new Label("H"), resizeHeightSpinner),
+                lockAspectCheck,
+                new HBox(10, exportButton, resizeButton),
+                saveToLibraryButton
+        );
+        controls.setPadding(new Insets(4, 16, 4, 16));
+        return controls;
+    }
+
+    private VBox buildLayersPanel() {
+        fontFamilyBox.getItems().setAll(Font.getFamilies());
+        fontFamilyBox.getSelectionModel().select(Font.getDefault().getFamily());
+        textField.setPromptText("Text layer content");
+
         layerWidthSpinner.setValueFactory(new SpinnerValueFactory.IntegerSpinnerValueFactory(1, 12000, 100));
         layerHeightSpinner.setValueFactory(new SpinnerValueFactory.IntegerSpinnerValueFactory(1, 12000, 100));
         layerXSpinner.setValueFactory(new SpinnerValueFactory.IntegerSpinnerValueFactory(-12000, 12000, 0));
@@ -148,7 +236,17 @@ public class EditorPane extends BorderPane {
         lockLayerAspectCheck.setSelected(true);
         layerVisibleCheck.setSelected(true);
 
-        layerList.setPrefHeight(150);
+        configureSlider(fontSizeSlider, true);
+        configureSlider(layerStrokeSlider, true);
+        configureSlider(layerOpacitySlider, false);
+
+        // Asset Gallery
+        javafx.scene.layout.FlowPane assetGallery = new javafx.scene.layout.FlowPane(5, 5);
+        assetGallery.setPrefHeight(100);
+        assetGallery.setStyle("-fx-background-color: #f1f5f9; -fx-border-color: #cbd5e1; -fx-padding: 5;");
+        loadAssetGallery(assetGallery);
+
+        layerList.setPrefHeight(120);
         layerList.setCellFactory(list -> new ListCell<>() {
             @Override
             protected void updateItem(ProjectLayer item, boolean empty) {
@@ -157,19 +255,17 @@ public class EditorPane extends BorderPane {
             }
         });
 
-        Button resetButton = new Button("Reset Base Adjustments");
-        resetButton.setOnAction(e -> resetControls());
-        Button clearLayersButton = new Button("Clear Layers");
+        Button clearLayersButton = new Button("Clear All");
         clearLayersButton.setOnAction(e -> {
             layers.clear();
             drawCanvas();
         });
 
-        Button addTextButton = new Button("Add Text Layer");
+        Button addTextButton = new Button("Add Text");
         addTextButton.setOnAction(e -> addTextLayer());
-        Button addAssetButton = new Button("Add Image / Asset Layer");
+        Button addAssetButton = new Button("Add Image");
         addAssetButton.setOnAction(e -> addImageLayerFromFile());
-        Button pasteLayerButton = new Button("Paste Clipboard as Layer");
+        Button pasteLayerButton = new Button("Paste Clipboard");
         pasteLayerButton.setOnAction(e -> pasteClipboardLayer());
         Button addRectButton = new Button("Add Rectangle");
         addRectButton.setOnAction(e -> addShapeLayer(LayerType.RECTANGLE));
@@ -178,7 +274,8 @@ public class EditorPane extends BorderPane {
         Button applyLayerButton = new Button("Apply Layer Changes");
         applyLayerButton.setOnAction(e -> applyLayerControls());
         applyLayerButton.getStyleClass().add("primary-button");
-        Button deleteLayerButton = new Button("Delete Layer");
+
+        Button deleteLayerButton = new Button("Delete");
         deleteLayerButton.setOnAction(e -> deleteSelectedLayer());
         deleteLayerButton.getStyleClass().add("danger-button");
         Button frontButton = new Button("Bring Front");
@@ -186,60 +283,31 @@ public class EditorPane extends BorderPane {
         Button backButton = new Button("Send Back");
         backButton.setOnAction(e -> moveSelectedLayer(-1));
 
-        Button exportButton = new Button("Export Composite Image");
-        exportButton.setOnAction(e -> exportCompositeImage(false));
-        exportButton.getStyleClass().add("success-button");
-        Button saveToLibraryButton = new Button("Save Composite into Library");
-        saveToLibraryButton.setOnAction(e -> saveCompositeIntoLibrary());
-        saveToLibraryButton.getStyleClass().add("success-button");
-        Button resizeButton = new Button("Export Resized Copy");
-        resizeButton.setOnAction(e -> exportResizedCopy());
-
         VBox controls = new VBox(10,
-                selectedLabel,
+                new Label("Asset Library (Drag to Canvas)"),
+                assetGallery,
                 new Separator(),
-                new Label("Non-destructive base image adjustments"),
-                sliderRow("Brightness", brightnessSlider),
-                sliderRow("Contrast", contrastSlider),
-                sliderRow("Saturation", saturationSlider),
-                autoEnhanceCheck,
-                grayscaleCheck,
-                labelledControl("Scenario tint / color combination", tintColorPicker),
-                sliderRow("Tint Strength", tintStrengthSlider),
-                sliderRow("Border Width", borderSlider),
-                labelledControl("Border Color", borderColorPicker),
-                sliderRow("Scale", scaleSlider),
-                sliderRow("Rotation", rotationSlider),
-                sliderRow("Translate X", translateXSlider),
-                sliderRow("Translate Y", translateYSlider),
-                new HBox(10, resetButton, clearLayersButton),
+                new Label("Add New Layer:"),
+                new HBox(5, addTextButton, addAssetButton, pasteLayerButton),
+                new HBox(5, addRectButton, addEllipseButton),
                 new Separator(),
-                new Label("Layer stack (drag directly on preview canvas)"),
+                new Label("Layer Stack"),
                 layerList,
-                new HBox(10, frontButton, backButton, deleteLayerButton),
+                new HBox(5, frontButton, backButton, deleteLayerButton, clearLayersButton),
+                new Separator(),
+                new Label("Selected Layer Properties"),
                 labelledControl("Text", textField),
                 labelledControl("Font", fontFamilyBox),
                 sliderRow("Font Size", fontSizeSlider),
-                labelledControl("Fill / Text Color", layerFillPicker),
-                labelledControl("Stroke / Outline Color", layerStrokePicker),
+                new HBox(10, labelledControl("Fill Color", layerFillPicker), labelledControl("Stroke Color", layerStrokePicker)),
                 sliderRow("Stroke Width", layerStrokeSlider),
                 sliderRow("Layer Opacity", layerOpacitySlider),
-                new Label("Selected layer properties"),
                 new HBox(10, new Label("X"), layerXSpinner, new Label("Y"), layerYSpinner),
-                new HBox(10, new Label("Width"), layerWidthSpinner, new Label("Height"), layerHeightSpinner),
+                new HBox(10, new Label("W"), layerWidthSpinner, new Label("H"), layerHeightSpinner),
                 new HBox(10, layerVisibleCheck, lockLayerAspectCheck),
-                new HBox(10, addTextButton, addAssetButton),
-                new HBox(10, pasteLayerButton, addRectButton, addEllipseButton),
-                applyLayerButton,
-                new Separator(),
-                new Label("Export / scaling"),
-                new HBox(10, new Label("Width"), resizeWidthSpinner, new Label("Height"), resizeHeightSpinner),
-                lockAspectCheck,
-                new HBox(10, exportButton, resizeButton),
-                saveToLibraryButton
+                applyLayerButton
         );
         controls.setPadding(new Insets(4, 16, 4, 4));
-        controls.setPrefWidth(370);
         return controls;
     }
 
@@ -273,9 +341,7 @@ public class EditorPane extends BorderPane {
             drawCanvas();
         });
         canvas.setOnMouseDragged(event -> {
-            if (draggedLayer == null || currentBase == null) {
-                return;
-            }
+            if (draggedLayer == null || currentBase == null) return;
             double[] point = canvasToImage(event.getX(), event.getY());
             draggedLayer.setX(point[0] - dragOffsetX);
             draggedLayer.setY(point[1] - dragOffsetY);
@@ -284,7 +350,102 @@ public class EditorPane extends BorderPane {
             drawCanvas();
         });
         canvas.setOnMouseReleased(event -> draggedLayer = null);
+
+        // Drag and Drop implementation
+        canvas.setOnDragOver(event -> {
+            if (event.getDragboard().hasString() || event.getDragboard().hasFiles()) {
+                event.acceptTransferModes(javafx.scene.input.TransferMode.COPY_OR_MOVE);
+            }
+            event.consume();
+        });
+
+        canvas.setOnDragDropped(event -> {
+            javafx.scene.input.Dragboard db = event.getDragboard();
+            boolean success = false;
+            if (db.hasFiles()) {
+                File droppedFile = db.getFiles().get(0);
+                addImageLayerAt(droppedFile, event.getX(), event.getY());
+                success = true;
+            } else if (db.hasString()) {
+                File droppedFile = new File(db.getString());
+                addImageLayerAt(droppedFile, event.getX(), event.getY());
+                success = true;
+            }
+            event.setDropCompleted(success);
+            event.consume();
+        });
+
         return scrollPane;
+    }
+
+    private void loadAssetGallery(javafx.scene.layout.FlowPane assetGallery) {
+        assetGallery.getChildren().clear();
+        try {
+            List<com.photofusionfx.model.AssetItem> assets = context.getAssetLibraryService().listAssets();
+            for (com.photofusionfx.model.AssetItem asset : assets) {
+                File file = new File(asset.getFile().getAbsolutePath());
+                if (!file.exists()) continue;
+
+                javafx.scene.image.ImageView thumb = new javafx.scene.image.ImageView(new Image(file.toURI().toString(), 60, 60, true, true));
+                thumb.setFitWidth(60);
+                thumb.setFitHeight(60);
+                thumb.setCursor(javafx.scene.Cursor.HAND);
+
+                thumb.setOnDragDetected(event -> {
+                    javafx.scene.input.Dragboard db = thumb.startDragAndDrop(javafx.scene.input.TransferMode.COPY);
+                    javafx.scene.input.ClipboardContent content = new javafx.scene.input.ClipboardContent();
+                    content.putString(file.getAbsolutePath());
+                    db.setContent(content);
+                    event.consume();
+                });
+                assetGallery.getChildren().add(thumb);
+            }
+        } catch (Exception e) {
+            System.out.println("Could not load assets: " + e.getMessage());
+        }
+    }
+
+    private void addImageLayerAt(File file, double canvasX, double canvasY) {
+        if (!ensureBaseImage()) return;
+        try {
+            BufferedImage image = ImageUtils.read(file);
+            double targetWidth = Math.min(currentBase.getWidth() * 0.35, image.getWidth());
+            double targetHeight = targetWidth * image.getHeight() / (double) image.getWidth();
+            double[] point = canvasToImage(canvasX, canvasY);
+            double startX = point[0] - (targetWidth / 2.0);
+            double startY = point[1] - (targetHeight / 2.0);
+
+            ProjectLayer layer = ProjectLayer.image(file.getAbsolutePath(), startX, startY, targetWidth, targetHeight);
+            layer.setOpacity(layerOpacitySlider.getValue());
+            layer.setName("Asset: " + file.getName());
+
+            layers.add(layer);
+            layerList.getSelectionModel().select(layer);
+            drawCanvas();
+        } catch (Exception ex) {
+            Dialogs.error("Layer Error", "Could not add the image layer at the dropped location.", ex);
+        }
+    }
+
+    private void resetDipControls() {
+        brightnessSlider.setValue(0);
+        contrastSlider.setValue(1.0);
+        saturationSlider.setValue(1.0);
+        grayscaleCheck.setSelected(false);
+        autoEnhanceCheck.setSelected(false);
+        tintColorPicker.setValue(Color.TRANSPARENT);
+        tintStrengthSlider.setValue(0.0);
+        borderColorPicker.setValue(Color.WHITE);
+        borderSlider.setValue(0);
+        renderBasePreview();
+    }
+
+    private void resetTransformControls() {
+        scaleSlider.setValue(1.0);
+        rotationSlider.setValue(0.0);
+        translateXSlider.setValue(0.0);
+        translateYSlider.setValue(0.0);
+        renderBasePreview();
     }
 
     private void registerListeners() {
@@ -298,7 +459,18 @@ public class EditorPane extends BorderPane {
         translateXSlider.valueProperty().addListener((obs, oldValue, newValue) -> debounce.playFromStart());
         translateYSlider.valueProperty().addListener((obs, oldValue, newValue) -> debounce.playFromStart());
         grayscaleCheck.selectedProperty().addListener((obs, oldValue, newValue) -> debounce.playFromStart());
-        autoEnhanceCheck.selectedProperty().addListener((obs, oldValue, newValue) -> debounce.playFromStart());
+        
+        autoEnhanceCheck.selectedProperty().addListener((obs, oldValue, isSelected) -> {
+            if (isSelected) {
+                brightnessSlider.setValue(10);
+                contrastSlider.setValue(1.25);
+                saturationSlider.setValue(1.20);
+            } else {
+                resetDipControls();
+            }
+            debounce.playFromStart();
+        });
+
         borderColorPicker.valueProperty().addListener((obs, oldValue, newValue) -> debounce.playFromStart());
         tintColorPicker.valueProperty().addListener((obs, oldValue, newValue) -> debounce.playFromStart());
 
@@ -306,6 +478,7 @@ public class EditorPane extends BorderPane {
         layers.addListener((javafx.collections.ListChangeListener<? super ProjectLayer>) change -> drawCanvas());
         layerWidthSpinner.valueProperty().addListener((obs, oldValue, newValue) -> resizeSelectedLayerFromWidth(newValue));
         layerHeightSpinner.valueProperty().addListener((obs, oldValue, newValue) -> resizeSelectedLayerFromHeight(newValue));
+        
         resizeWidthSpinner.valueProperty().addListener((obs, oldValue, newValue) -> {
             if (!updatingResizeSpinners && lockAspectCheck.isSelected() && currentBase != null && newValue != null) {
                 updatingResizeSpinners = true;
@@ -343,9 +516,7 @@ public class EditorPane extends BorderPane {
     }
 
     private void renderBasePreview() {
-        if (originalImage == null) {
-            return;
-        }
+        if (originalImage == null) return;
         try {
             currentBase = context.getImageProcessingService().applyParameters(originalImage, buildParameters());
             updateResizeSpinnersToCurrentBase();
@@ -373,27 +544,8 @@ public class EditorPane extends BorderPane {
         return parameters;
     }
 
-    private void resetControls() {
-        brightnessSlider.setValue(0);
-        contrastSlider.setValue(1.0);
-        saturationSlider.setValue(1.0);
-        grayscaleCheck.setSelected(false);
-        autoEnhanceCheck.setSelected(false);
-        tintColorPicker.setValue(Color.TRANSPARENT);
-        tintStrengthSlider.setValue(0.0);
-        borderSlider.setValue(0);
-        borderColorPicker.setValue(Color.WHITE);
-        scaleSlider.setValue(1.0);
-        rotationSlider.setValue(0.0);
-        translateXSlider.setValue(0.0);
-        translateYSlider.setValue(0.0);
-        renderBasePreview();
-    }
-
     private void addTextLayer() {
-        if (!ensureBaseImage()) {
-            return;
-        }
+        if (!ensureBaseImage()) return;
         ProjectLayer layer = ProjectLayer.text(
                 textField.getText(),
                 fontFamilyBox.getValue(),
@@ -411,9 +563,7 @@ public class EditorPane extends BorderPane {
     }
 
     private void addImageLayerFromFile() {
-        if (!ensureBaseImage()) {
-            return;
-        }
+        if (!ensureBaseImage()) return;
         FileChooser chooser = new FileChooser();
         chooser.setTitle("Choose Image / Asset Layer");
         chooser.setInitialDirectory(AppPaths.ASSET_DIR.toFile().exists() ? AppPaths.ASSET_DIR.toFile() : AppPaths.EXPORT_DIR.toFile());
@@ -422,15 +572,11 @@ public class EditorPane extends BorderPane {
                 new FileChooser.ExtensionFilter("All Files", "*.*")
         );
         File file = chooser.showOpenDialog(getScene().getWindow());
-        if (file != null) {
-            addImageLayer(file);
-        }
+        if (file != null) addImageLayer(file);
     }
 
     private void pasteClipboardLayer() {
-        if (!ensureBaseImage()) {
-            return;
-        }
+        if (!ensureBaseImage()) return;
         Clipboard clipboard = Clipboard.getSystemClipboard();
         try {
             if (clipboard.hasFiles()) {
@@ -451,9 +597,9 @@ public class EditorPane extends BorderPane {
                 addImageLayer(managedAsset);
                 return;
             }
-            Dialogs.warn("Clipboard Empty", "Clipboard does not contain an image file or image data.");
+            Dialogs.warn("Clipboard Empty", "Clipboard does not contain an image file or data.");
         } catch (Exception ex) {
-            Dialogs.error("Paste Error", "Could not paste clipboard content as a layer.", ex);
+            Dialogs.error("Paste Error", "Could not paste clipboard content.", ex);
         }
     }
 
@@ -474,9 +620,7 @@ public class EditorPane extends BorderPane {
     }
 
     private void addShapeLayer(LayerType type) {
-        if (!ensureBaseImage()) {
-            return;
-        }
+        if (!ensureBaseImage()) return;
         ProjectLayer layer = ProjectLayer.shape(
                 type,
                 currentBase.getWidth() * 0.15,
@@ -518,9 +662,7 @@ public class EditorPane extends BorderPane {
     }
 
     private void loadLayerControls(ProjectLayer layer) {
-        if (layer == null) {
-            return;
-        }
+        if (layer == null) return;
         updatingLayerSizeSpinners = true;
         textField.setText(layer.getText() == null ? "" : layer.getText());
         fontFamilyBox.getSelectionModel().select(layer.getFontFamily());
@@ -540,9 +682,7 @@ public class EditorPane extends BorderPane {
 
     private void resizeSelectedLayerFromWidth(Integer newWidth) {
         ProjectLayer layer = layerList.getSelectionModel().getSelectedItem();
-        if (updatingLayerSizeSpinners || layer == null || newWidth == null) {
-            return;
-        }
+        if (updatingLayerSizeSpinners || layer == null || newWidth == null) return;
         double oldWidth = Math.max(1.0, layer.getWidth());
         double oldHeight = Math.max(1.0, layer.getHeight());
         if (lockLayerAspectCheck.isSelected()) {
@@ -555,9 +695,7 @@ public class EditorPane extends BorderPane {
 
     private void resizeSelectedLayerFromHeight(Integer newHeight) {
         ProjectLayer layer = layerList.getSelectionModel().getSelectedItem();
-        if (updatingLayerSizeSpinners || layer == null || newHeight == null) {
-            return;
-        }
+        if (updatingLayerSizeSpinners || layer == null || newHeight == null) return;
         double oldWidth = Math.max(1.0, layer.getWidth());
         double oldHeight = Math.max(1.0, layer.getHeight());
         if (lockLayerAspectCheck.isSelected()) {
@@ -578,9 +716,7 @@ public class EditorPane extends BorderPane {
 
     private void moveSelectedLayer(int direction) {
         ProjectLayer layer = layerList.getSelectionModel().getSelectedItem();
-        if (layer == null) {
-            return;
-        }
+        if (layer == null) return;
         int index = layers.indexOf(layer);
         int target = direction > 0 ? Math.min(layers.size() - 1, index + 1) : Math.max(0, index - 1);
         if (target != index) {
@@ -592,9 +728,7 @@ public class EditorPane extends BorderPane {
     }
 
     private void exportCompositeImage(boolean silent) {
-        if (!ensureBaseImage()) {
-            return;
-        }
+        if (!ensureBaseImage()) return;
         try {
             BufferedImage composite = context.getLayerRenderService().renderComposite(currentBase, layers);
             FileChooser chooser = new FileChooser();
@@ -607,39 +741,31 @@ public class EditorPane extends BorderPane {
                     new FileChooser.ExtensionFilter("JPEG Image", "*.jpg", "*.jpeg")
             );
             File file = chooser.showSaveDialog(getScene().getWindow());
-            if (file == null) {
-                return;
-            }
+            if (file == null) return;
             ImageUtils.write(composite, file);
             context.setLatestExportFile(file);
-            if (!silent) {
-                Dialogs.info("Export Complete", "Layered composite exported successfully. The original file was not changed.");
-            }
+            if (!silent) Dialogs.info("Export Complete", "Layered composite exported successfully.");
         } catch (Exception ex) {
             Dialogs.error("Export Error", "Could not export the layered image.", ex);
         }
     }
 
     private void saveCompositeIntoLibrary() {
-        if (!ensureBaseImage()) {
-            return;
-        }
+        if (!ensureBaseImage()) return;
         try {
             BufferedImage composite = context.getLayerRenderService().renderComposite(currentBase, layers);
             String baseName = context.getSelectedPhoto() == null ? "layered-image" : FileUtils.baseName(context.getSelectedPhoto().getName()) + "-layered";
             var imported = context.getLibraryService().saveGeneratedImageToLibrary(composite, baseName);
             context.addImportedPhotos(List.of(imported));
             context.setLatestExportFile(Path.of(imported.getFilePath()).toFile());
-            Dialogs.info("Saved to Library", "The composite was imported into the managed library. The source image remains unchanged.");
+            Dialogs.info("Saved to Library", "The composite was imported into the library.");
         } catch (Exception ex) {
-            Dialogs.error("Save Error", "Could not save the layered composite into the library.", ex);
+            Dialogs.error("Save Error", "Could not save the layered composite.", ex);
         }
     }
 
     private void exportResizedCopy() {
-        if (!ensureBaseImage()) {
-            return;
-        }
+        if (!ensureBaseImage()) return;
         try {
             int width = Math.max(1, resizeWidthSpinner.getValue());
             int height = Math.max(1, resizeHeightSpinner.getValue());
@@ -654,12 +780,10 @@ public class EditorPane extends BorderPane {
                     new FileChooser.ExtensionFilter("JPEG Image", "*.jpg", "*.jpeg")
             );
             File file = chooser.showSaveDialog(getScene().getWindow());
-            if (file == null) {
-                return;
-            }
+            if (file == null) return;
             ImageUtils.write(composite, file);
             context.setLatestExportFile(file);
-            Dialogs.info("Resize Export Complete", "A resized copy was exported. The original file was not modified.");
+            Dialogs.info("Resize Export Complete", "Resized copy exported.");
         } catch (Exception ex) {
             Dialogs.error("Resize Error", "Could not export the resized copy.", ex);
         }
@@ -674,13 +798,11 @@ public class EditorPane extends BorderPane {
         if (currentBase == null) {
             gc.setFill(Color.rgb(100, 116, 139));
             gc.setFont(Font.font(18));
-            gc.fillText("Select an image in Repository to start layer-based editing.", 28, 42);
+            gc.fillText("Select an image in Repository to start editing.", 28, 42);
             return;
         }
         displayScale = Math.min(cw / currentBase.getWidth(), ch / currentBase.getHeight());
-        if (!Double.isFinite(displayScale) || displayScale <= 0) {
-            displayScale = 1.0;
-        }
+        if (!Double.isFinite(displayScale) || displayScale <= 0) displayScale = 1.0;
         double drawW = currentBase.getWidth() * displayScale;
         double drawH = currentBase.getHeight() * displayScale;
         imageOffsetX = (cw - drawW) / 2.0;
@@ -688,11 +810,10 @@ public class EditorPane extends BorderPane {
         gc.setFill(Color.WHITE);
         gc.fillRect(imageOffsetX, imageOffsetY, drawW, drawH);
         gc.drawImage(ImageUtils.toFxImage(currentBase), imageOffsetX, imageOffsetY, drawW, drawH);
-        for (ProjectLayer layer : layers) {
-            drawLayer(gc, layer);
-        }
+        for (ProjectLayer layer : layers) drawLayer(gc, layer);
+
         ProjectLayer selected = layerList.getSelectionModel().getSelectedItem();
-        if (selected != null) {
+        if (selected != null && selected.isVisible()) {
             gc.setStroke(Color.rgb(37, 99, 235));
             gc.setLineWidth(2);
             gc.setLineDashes(8, 5);
@@ -705,9 +826,7 @@ public class EditorPane extends BorderPane {
     }
 
     private void drawLayer(GraphicsContext gc, ProjectLayer layer) {
-        if (layer == null || !layer.isVisible()) {
-            return;
-        }
+        if (layer == null || !layer.isVisible()) return;
         double x = imageOffsetX + layer.getX() * displayScale;
         double y = imageOffsetY + layer.getY() * displayScale;
         double w = layer.getWidth() * displayScale;
@@ -754,17 +873,13 @@ public class EditorPane extends BorderPane {
     }
 
     private ProjectLayer findLayerAt(double canvasX, double canvasY) {
-        if (currentBase == null) {
-            return null;
-        }
+        if (currentBase == null) return null;
         double[] point = canvasToImage(canvasX, canvasY);
         double x = point[0];
         double y = point[1];
         for (int i = layers.size() - 1; i >= 0; i--) {
             ProjectLayer layer = layers.get(i);
-            if (!layer.isVisible()) {
-                continue;
-            }
+            if (!layer.isVisible()) continue;
             if (x >= layer.getX() && x <= layer.getX() + layer.getWidth()
                     && y >= layer.getY() && y <= layer.getY() + layer.getHeight()) {
                 return layer;
@@ -786,9 +901,7 @@ public class EditorPane extends BorderPane {
     }
 
     private void updateResizeSpinnersToCurrentBase() {
-        if (currentBase == null) {
-            return;
-        }
+        if (currentBase == null) return;
         updatingResizeSpinners = true;
         resizeWidthSpinner.getValueFactory().setValue(currentBase.getWidth());
         resizeHeightSpinner.getValueFactory().setValue(currentBase.getHeight());
