@@ -280,6 +280,10 @@ public class RepositoryPane extends BorderPane {
         caption.getStyleClass().add("thumbnail-caption");
         caption.setWrapText(true);
 
+
+caption.setCursor(javafx.scene.Cursor.HAND);
+caption.setTooltip(new javafx.scene.control.Tooltip("Double-click to rename"));     
+
         VBox cardContent = new VBox(8, new StackPane(imageBox, heart, star), caption);
         cardContent.setPadding(new Insets(10));
         cardContent.getStyleClass().add("thumbnail-card");
