@@ -69,8 +69,8 @@
 }
 
 .button {
-    -fx-background-color: linear-gradient(to bottom, #ffffff, #eef3fb);
-    -fx-border-color: #d6deec;
+    -fx-background-color: linear-gradient(to bottom, #dcfce7, #bbf7d0);
+    -fx-border-color: #86efac;
     -fx-border-radius: 10;
     -fx-background-radius: 10;
     -fx-padding: 8 14 8 14;
@@ -78,12 +78,16 @@
 }
 
 .button:hover {
-    -fx-background-color: linear-gradient(to bottom, #ffffff, #e8f0ff);
+    -fx-background-color: linear-gradient(to bottom, #f0fdf4, #dcfce7);
 }
 
 .danger-button {
     -fx-background-color: linear-gradient(to bottom, #fee2e2, #fecaca);
     -fx-border-color: #fca5a5;
+}
+
+.danger-button:hover {
+    -fx-background-color: linear-gradient(to bottom, #fef2f2, #fee2e2);
 }
 
 .text-area,
@@ -107,6 +111,23 @@
 .success-button {
     -fx-background-color: linear-gradient(to bottom, #dcfce7, #bbf7d0);
     -fx-border-color: #86efac;
+}
+
+.success-button:hover {
+    -fx-background-color: linear-gradient(to bottom, #f0fdf4, #dcfce7);
+}
+
+.primary-button {
+    -fx-background-color: linear-gradient(to bottom, #dcfce7, #bbf7d0);
+    -fx-border-color: #86efac;
+    -fx-border-radius: 10;
+    -fx-background-radius: 10;
+    -fx-padding: 8 14 8 14;
+    -fx-font-weight: 600;
+}
+
+.primary-button:hover {
+    -fx-background-color: linear-gradient(to bottom, #f0fdf4, #dcfce7);
 }
 
 .list-view {
