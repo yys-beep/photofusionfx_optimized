@@ -1,5 +1,7 @@
 package com.photofusionfx.ui;
 
+//ExtractorPane supports brush, lasso, magic wand selection and object extraction
+
 import com.photofusionfx.AppContext;
 import com.photofusionfx.model.PhotoItem;
 import com.photofusionfx.service.AppPaths;
