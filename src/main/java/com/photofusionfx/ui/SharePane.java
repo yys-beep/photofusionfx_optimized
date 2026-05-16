@@ -192,6 +192,7 @@ public class SharePane extends VBox {
 
     private void saveConfig() {
         try {
+            //persist SMTP settings locally so user doesnt have to re-enter app password on every launch
             context.getEmailService().saveConfig(buildEmailConfig());
             Dialogs.info("Saved", "Mail settings saved locally for this application.");
         } catch (Exception ex) {
@@ -200,10 +201,12 @@ public class SharePane extends VBox {
     }
 
     private void sendEmail() {
+        //validate file exists on disk before attempting STMP send
         if (selectedFile == null || !selectedFile.exists()) {
             Dialogs.warn("No File Selected", "Choose an image or video file to attach first.");
             return;
         }
+        //validate required address fields are filled before opening SMTP connection
         if (toField.getText().isBlank() || fromField.getText().isBlank()) {
             Dialogs.warn("Missing Fields", "Fill in both the From and To email addresses.");
             return;
@@ -249,6 +252,7 @@ public class SharePane extends VBox {
         return config;
     }
 
+    //
     private void openWhatsAppHelper() {
         if (selectedFile == null || !selectedFile.exists()) {
             Dialogs.warn("No File Selected", "Choose an image or video file first.");
