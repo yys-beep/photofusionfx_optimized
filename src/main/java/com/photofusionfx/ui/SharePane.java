@@ -1,5 +1,7 @@
 package com.photofusionfx.ui;
 
+//SharePane handles email sharing with real attachment and whatsapp file copy
+
 import com.photofusionfx.AppContext;
 import com.photofusionfx.model.EmailConfig;
 import com.photofusionfx.util.Dialogs;
