@@ -252,7 +252,7 @@ public class SharePane extends VBox {
         return config;
     }
 
-    //
+    //whatsapp has no public java api for direct file injection
     private void openWhatsAppHelper() {
         if (selectedFile == null || !selectedFile.exists()) {
             Dialogs.warn("No File Selected", "Choose an image or video file first.");
@@ -261,7 +261,9 @@ public class SharePane extends VBox {
         try {
             String caption = bodyArea.getText().isBlank() ? "Shared via PhotoFusion FX" : bodyArea.getText().trim();
             ClipboardContent content = new ClipboardContent();
+            //step 1: copy actualfile object to clipboard so user can paste it in ws chat
             content.putFiles(List.of(selectedFile));
+            //step 2: copy caption text so ws web pre fills the message box via wa.me URL
             content.putString(caption);
             Clipboard.getSystemClipboard().setContent(content);
 
