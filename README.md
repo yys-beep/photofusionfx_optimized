@@ -100,3 +100,15 @@ The original image/video source files are not overwritten. Adjustments, text, sh
 ## WhatsApp Sharing Limitation
 
 Desktop Java cannot silently attach a local file to WhatsApp Web through a stable public API. This project avoids the previous path-string behavior by placing the actual selected file object on the OS clipboard and opening WhatsApp with a caption. The user then pastes in the WhatsApp chat to attach the real file.
+
+## Appendix B: Core Implementation Code Excerpts
+
+- WhatsApp Clipboard Handoff Integration: `com.photofusionfx.ui.SharePane.openWhatsAppHelper()`
+- Magic Wand HSV Breadth-First Search: `com.photofusionfx.service.ObjectExtractionService.maskByColorSimilarity(BufferedImage source, int seedX, int seedY, double threshold)` plus `extractByColorSimilarity(...)`
+- Database Record Insertion and Duplicate Prevention: `com.photofusionfx.service.LibraryService.importSingleImage(...)` / `insertPhoto(...)` using `FileUtils.sha256(...)` and a checksum-backed `photos` table in `com.photofusionfx.service.DatabaseManager`
+- Brightness & Contrast Adjustment Algorithm: `com.photofusionfx.service.ImageProcessingService.adjustBrightnessAndContrast(BufferedImage source, double brightness, double contrast)`
+- Image Mosaic Core Assembly Loop: `com.photofusionfx.service.MosaicService.generateMosaic(...)`
+- Video Creation and Overlay Text: `com.photofusionfx.service.VideoService.renderVideo(...)`
+- Background Task for Mosaic Generation: `com.photofusionfx.ui.MosaicPane.generateMosaic()` uses `Task<BufferedImage>` with `progressBar.progressProperty().bind(task.progressProperty())`
+- Annotation Heart Badge Overlay: `com.photofusionfx.ui.RepositoryPane.createCard(PhotoItem photo)` uses `Label("♥")` visible when `photo.hasAnnotation()`
+- Sending Email with Attachments via Jakarta Mail: `com.photofusionfx.service.EmailService.sendEmail(...)`
