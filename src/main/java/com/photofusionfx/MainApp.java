@@ -102,7 +102,7 @@ public class MainApp extends Application {
         } catch (Exception e) {
             Dialogs.error("Startup Error", "The application could not start.", e);
         }
-    }
+    }// end of start()
 
     private List<Image> loadAppIcons() {
         int[] sizes = {16, 24, 32, 48, 64, 128, 256};
