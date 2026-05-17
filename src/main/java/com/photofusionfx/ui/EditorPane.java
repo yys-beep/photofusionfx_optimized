@@ -132,8 +132,9 @@ public class EditorPane extends BorderPane {
             }
         });
 
-        HBox topToolbar = new HBox(15, toggleLeftBtn, toggleRightBtn);
-        topToolbar.setAlignment(Pos.CENTER);
+        Region topSpacer = new Region();
+        HBox.setHgrow(topSpacer, Priority.ALWAYS); // Spacer pushes buttons apart
+        HBox topToolbar = new HBox(toggleLeftBtn, topSpacer, toggleRightBtn);
         topToolbar.setPadding(new Insets(0, 0, 10, 0));
         setTop(topToolbar);
 
@@ -159,7 +160,12 @@ public class EditorPane extends BorderPane {
         resizeHeightSpinner.setValueFactory(new SpinnerValueFactory.IntegerSpinnerValueFactory(1, 12000, 768));
         resizeWidthSpinner.setEditable(true);
         resizeHeightSpinner.setEditable(true);
+        resizeWidthSpinner.setPrefWidth(75);
+        resizeHeightSpinner.setPrefWidth(75);
         lockAspectCheck.setSelected(true);
+
+        Label resW = new Label("W"); resW.setMinWidth(Region.USE_PREF_SIZE);
+        Label resH = new Label("H"); resH.setMinWidth(Region.USE_PREF_SIZE);
 
         // Reset Buttons
         Button resetDipBtn = new Button("Reset DIP");
@@ -197,7 +203,7 @@ public class EditorPane extends BorderPane {
                 grayscaleCheck,
                 labelledControl("Scenario tint", tintColorPicker),
                 sliderRow("Tint Strength", tintStrengthSlider),
-                labelledControl("Border Color", borderColorPicker), // Moved above border width
+                labelledControl("Border Color", borderColorPicker),
                 sliderRow("Border Width", borderSlider),
                 resetDipBtn,
                 new Separator(),
@@ -211,7 +217,7 @@ public class EditorPane extends BorderPane {
                 resetAllBtn,
                 new Separator(),
                 new Label("Export & Rescaling"),
-                new HBox(10, new Label("W"), resizeWidthSpinner, new Label("H"), resizeHeightSpinner),
+                new HBox(10, resW, resizeWidthSpinner, resH, resizeHeightSpinner),
                 lockAspectCheck,
                 new HBox(10, exportButton, resizeButton),
                 saveToLibraryButton
@@ -233,8 +239,26 @@ public class EditorPane extends BorderPane {
         layerYSpinner.setEditable(true);
         layerWidthSpinner.setEditable(true);
         layerHeightSpinner.setEditable(true);
+        
+        layerWidthSpinner.setPrefWidth(65);
+        layerHeightSpinner.setPrefWidth(65);
+        layerXSpinner.setPrefWidth(65);
+        layerYSpinner.setPrefWidth(65);
         lockLayerAspectCheck.setSelected(true);
         layerVisibleCheck.setSelected(true);
+
+        Label lx = new Label("X"); lx.setMinWidth(Region.USE_PREF_SIZE);
+        Label ly = new Label("Y"); ly.setMinWidth(Region.USE_PREF_SIZE);
+        Label lw = new Label("W"); lw.setMinWidth(Region.USE_PREF_SIZE);
+        Label lh = new Label("H"); lh.setMinWidth(Region.USE_PREF_SIZE);
+
+        javafx.scene.layout.GridPane geomGrid = new javafx.scene.layout.GridPane();
+        geomGrid.setHgap(10);
+        geomGrid.setVgap(10);
+        geomGrid.add(lx, 0, 0); geomGrid.add(layerXSpinner, 1, 0); 
+        geomGrid.add(ly, 2, 0); geomGrid.add(layerYSpinner, 3, 0); 
+        geomGrid.add(lw, 0, 1); geomGrid.add(layerWidthSpinner, 1, 1); 
+        geomGrid.add(lh, 2, 1); geomGrid.add(layerHeightSpinner, 3, 1); 
 
         configureSlider(fontSizeSlider, true);
         configureSlider(layerStrokeSlider, true);
@@ -245,6 +269,11 @@ public class EditorPane extends BorderPane {
         assetGallery.setPrefHeight(100);
         assetGallery.setStyle("-fx-background-color: #f1f5f9; -fx-border-color: #cbd5e1; -fx-padding: 5;");
         loadAssetGallery(assetGallery);
+
+        // Auto-refresh listener for newly extracted objects
+        context.latestExportFileProperty().addListener((obs, oldValue, newValue) -> {
+            javafx.application.Platform.runLater(() -> loadAssetGallery(assetGallery));
+        });
 
         layerList.setPrefHeight(120);
         layerList.setCellFactory(list -> new ListCell<>() {
@@ -267,10 +296,7 @@ public class EditorPane extends BorderPane {
         addAssetButton.setOnAction(e -> addImageLayerFromFile());
         Button pasteLayerButton = new Button("Paste Clipboard");
         pasteLayerButton.setOnAction(e -> pasteClipboardLayer());
-        Button addRectButton = new Button("Add Rectangle");
-        addRectButton.setOnAction(e -> addShapeLayer(LayerType.RECTANGLE));
-        Button addEllipseButton = new Button("Add Ellipse");
-        addEllipseButton.setOnAction(e -> addShapeLayer(LayerType.ELLIPSE));
+        
         Button applyLayerButton = new Button("Apply Layer Changes");
         applyLayerButton.setOnAction(e -> applyLayerControls());
         applyLayerButton.getStyleClass().add("primary-button");
@@ -287,14 +313,6 @@ public class EditorPane extends BorderPane {
                 new Label("Asset Library (Drag to Canvas)"),
                 assetGallery,
                 new Separator(),
-                new Label("Add New Layer:"),
-                new HBox(5, addTextButton, addAssetButton, pasteLayerButton),
-                new HBox(5, addRectButton, addEllipseButton),
-                new Separator(),
-                new Label("Layer Stack"),
-                layerList,
-                new HBox(5, frontButton, backButton, deleteLayerButton, clearLayersButton),
-                new Separator(),
                 new Label("Selected Layer Properties"),
                 labelledControl("Text", textField),
                 labelledControl("Font", fontFamilyBox),
@@ -302,10 +320,16 @@ public class EditorPane extends BorderPane {
                 new HBox(10, labelledControl("Fill Color", layerFillPicker), labelledControl("Stroke Color", layerStrokePicker)),
                 sliderRow("Stroke Width", layerStrokeSlider),
                 sliderRow("Layer Opacity", layerOpacitySlider),
-                new HBox(10, new Label("X"), layerXSpinner, new Label("Y"), layerYSpinner),
-                new HBox(10, new Label("W"), layerWidthSpinner, new Label("H"), layerHeightSpinner),
+                geomGrid, 
                 new HBox(10, layerVisibleCheck, lockLayerAspectCheck),
-                applyLayerButton
+                new HBox(10, addTextButton, applyLayerButton), 
+                new Separator(),
+                new Label("Add New Layer:"),
+                new HBox(5, addAssetButton, pasteLayerButton), 
+                new Separator(),
+                new Label("Layer Stack"),
+                layerList,
+                new HBox(5, frontButton, backButton, deleteLayerButton, clearLayersButton)
         );
         controls.setPadding(new Insets(4, 16, 4, 4));
         return controls;
@@ -619,24 +643,6 @@ public class EditorPane extends BorderPane {
         }
     }
 
-    private void addShapeLayer(LayerType type) {
-        if (!ensureBaseImage()) return;
-        ProjectLayer layer = ProjectLayer.shape(
-                type,
-                currentBase.getWidth() * 0.15,
-                currentBase.getHeight() * 0.15,
-                currentBase.getWidth() * 0.25,
-                currentBase.getHeight() * 0.18,
-                layerFillPicker.getValue(),
-                layerStrokePicker.getValue(),
-                layerStrokeSlider.getValue()
-        );
-        layer.setOpacity(layerOpacitySlider.getValue());
-        layers.add(layer);
-        layerList.getSelectionModel().select(layer);
-        drawCanvas();
-    }
-
     private void applyLayerControls() {
         ProjectLayer layer = layerList.getSelectionModel().getSelectedItem();
         if (layer == null) {
@@ -852,22 +858,6 @@ public class EditorPane extends BorderPane {
                     gc.fillRect(x, y, w, h);
                 }
             }
-        } else if (layer.getType() == LayerType.RECTANGLE) {
-            gc.setFill(layer.getFillColor());
-            gc.fillRect(x, y, w, h);
-            if (layer.getStrokeWidth() > 0) {
-                gc.setStroke(layer.getStrokeColor());
-                gc.setLineWidth(Math.max(1, layer.getStrokeWidth() * displayScale));
-                gc.strokeRect(x, y, w, h);
-            }
-        } else if (layer.getType() == LayerType.ELLIPSE) {
-            gc.setFill(layer.getFillColor());
-            gc.fillOval(x, y, w, h);
-            if (layer.getStrokeWidth() > 0) {
-                gc.setStroke(layer.getStrokeColor());
-                gc.setLineWidth(Math.max(1, layer.getStrokeWidth() * displayScale));
-                gc.strokeOval(x, y, w, h);
-            }
         }
         gc.restore();
     }
@@ -912,19 +902,23 @@ public class EditorPane extends BorderPane {
         Label valueLabel = new Label();
         String format = title.equals("Contrast") || title.equals("Scale") || title.equals("Saturation") || title.equals("Tint Strength") || title.equals("Layer Opacity") ? "%.2f" : "%.0f";
         valueLabel.textProperty().bind(slider.valueProperty().asString(format));
-        HBox header = new HBox(8, new Label(title), spacer(), valueLabel);
+        valueLabel.setMinWidth(Region.USE_PREF_SIZE);
+
+        Label titleLabel = new Label(title);
+        titleLabel.setMinWidth(Region.USE_PREF_SIZE);
+
+        Region spacer = new Region();
+        HBox.setHgrow(spacer, Priority.ALWAYS);
+
+        HBox header = new HBox(8, titleLabel, spacer, valueLabel);
         header.setAlignment(Pos.CENTER_LEFT);
         return new VBox(6, header, slider);
     }
 
     private VBox labelledControl(String title, javafx.scene.Node node) {
-        return new VBox(6, new Label(title), node);
-    }
-
-    private Region spacer() {
-        Region region = new Region();
-        HBox.setHgrow(region, Priority.ALWAYS);
-        return region;
+        Label titleLabel = new Label(title);
+        titleLabel.setMinWidth(Region.USE_PREF_SIZE);
+        return new VBox(6, titleLabel, node);
     }
 
     private void configureSlider(Slider slider, boolean integerLabels) {

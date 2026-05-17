@@ -1,28 +1,28 @@
-C:\Users\win11\Downloads\PhotoFusionFX_optimized\PhotoFusionFX\src\main\java\com\photofusionfx\AppContext.java
-C:\Users\win11\Downloads\PhotoFusionFX_optimized\PhotoFusionFX\src\main\java\com\photofusionfx\MainApp.java
-C:\Users\win11\Downloads\PhotoFusionFX_optimized\PhotoFusionFX\src\main\java\com\photofusionfx\model\AssetItem.java
-C:\Users\win11\Downloads\PhotoFusionFX_optimized\PhotoFusionFX\src\main\java\com\photofusionfx\model\EditParameters.java
-C:\Users\win11\Downloads\PhotoFusionFX_optimized\PhotoFusionFX\src\main\java\com\photofusionfx\model\EmailConfig.java
-C:\Users\win11\Downloads\PhotoFusionFX_optimized\PhotoFusionFX\src\main\java\com\photofusionfx\model\LayerType.java
-C:\Users\win11\Downloads\PhotoFusionFX_optimized\PhotoFusionFX\src\main\java\com\photofusionfx\model\PhotoItem.java
-C:\Users\win11\Downloads\PhotoFusionFX_optimized\PhotoFusionFX\src\main\java\com\photofusionfx\model\ProjectLayer.java
-C:\Users\win11\Downloads\PhotoFusionFX_optimized\PhotoFusionFX\src\main\java\com\photofusionfx\service\AppPaths.java
-C:\Users\win11\Downloads\PhotoFusionFX_optimized\PhotoFusionFX\src\main\java\com\photofusionfx\service\AssetLibraryService.java
-C:\Users\win11\Downloads\PhotoFusionFX_optimized\PhotoFusionFX\src\main\java\com\photofusionfx\service\DatabaseManager.java
-C:\Users\win11\Downloads\PhotoFusionFX_optimized\PhotoFusionFX\src\main\java\com\photofusionfx\service\EmailService.java
-C:\Users\win11\Downloads\PhotoFusionFX_optimized\PhotoFusionFX\src\main\java\com\photofusionfx\service\ImageProcessingService.java
-C:\Users\win11\Downloads\PhotoFusionFX_optimized\PhotoFusionFX\src\main\java\com\photofusionfx\service\LayerRenderService.java
-C:\Users\win11\Downloads\PhotoFusionFX_optimized\PhotoFusionFX\src\main\java\com\photofusionfx\service\LibraryService.java
-C:\Users\win11\Downloads\PhotoFusionFX_optimized\PhotoFusionFX\src\main\java\com\photofusionfx\service\MosaicService.java
-C:\Users\win11\Downloads\PhotoFusionFX_optimized\PhotoFusionFX\src\main\java\com\photofusionfx\service\ObjectExtractionService.java
-C:\Users\win11\Downloads\PhotoFusionFX_optimized\PhotoFusionFX\src\main\java\com\photofusionfx\service\VideoService.java
-C:\Users\win11\Downloads\PhotoFusionFX_optimized\PhotoFusionFX\src\main\java\com\photofusionfx\ui\AssetLibraryPane.java
-C:\Users\win11\Downloads\PhotoFusionFX_optimized\PhotoFusionFX\src\main\java\com\photofusionfx\ui\EditorPane.java
-C:\Users\win11\Downloads\PhotoFusionFX_optimized\PhotoFusionFX\src\main\java\com\photofusionfx\ui\ExtractorPane.java
-C:\Users\win11\Downloads\PhotoFusionFX_optimized\PhotoFusionFX\src\main\java\com\photofusionfx\ui\MosaicPane.java
-C:\Users\win11\Downloads\PhotoFusionFX_optimized\PhotoFusionFX\src\main\java\com\photofusionfx\ui\RepositoryPane.java
-C:\Users\win11\Downloads\PhotoFusionFX_optimized\PhotoFusionFX\src\main\java\com\photofusionfx\ui\SharePane.java
-C:\Users\win11\Downloads\PhotoFusionFX_optimized\PhotoFusionFX\src\main\java\com\photofusionfx\ui\VideoPane.java
-C:\Users\win11\Downloads\PhotoFusionFX_optimized\PhotoFusionFX\src\main\java\com\photofusionfx\util\Dialogs.java
-C:\Users\win11\Downloads\PhotoFusionFX_optimized\PhotoFusionFX\src\main\java\com\photofusionfx\util\FileUtils.java
-C:\Users\win11\Downloads\PhotoFusionFX_optimized\PhotoFusionFX\src\main\java\com\photofusionfx\util\ImageUtils.java
+C:\Users\winsl\OneDrive\Documents\A WIG3003 JAVAFX\photofusionfx_optimized\src\main\java\com\photofusionfx\AppContext.java
+C:\Users\winsl\OneDrive\Documents\A WIG3003 JAVAFX\photofusionfx_optimized\src\main\java\com\photofusionfx\MainApp.java
+C:\Users\winsl\OneDrive\Documents\A WIG3003 JAVAFX\photofusionfx_optimized\src\main\java\com\photofusionfx\model\AssetItem.java
+C:\Users\winsl\OneDrive\Documents\A WIG3003 JAVAFX\photofusionfx_optimized\src\main\java\com\photofusionfx\model\EditParameters.java
+C:\Users\winsl\OneDrive\Documents\A WIG3003 JAVAFX\photofusionfx_optimized\src\main\java\com\photofusionfx\model\EmailConfig.java
+C:\Users\winsl\OneDrive\Documents\A WIG3003 JAVAFX\photofusionfx_optimized\src\main\java\com\photofusionfx\model\LayerType.java
+C:\Users\winsl\OneDrive\Documents\A WIG3003 JAVAFX\photofusionfx_optimized\src\main\java\com\photofusionfx\model\PhotoItem.java
+C:\Users\winsl\OneDrive\Documents\A WIG3003 JAVAFX\photofusionfx_optimized\src\main\java\com\photofusionfx\model\ProjectLayer.java
+C:\Users\winsl\OneDrive\Documents\A WIG3003 JAVAFX\photofusionfx_optimized\src\main\java\com\photofusionfx\service\AppPaths.java
+C:\Users\winsl\OneDrive\Documents\A WIG3003 JAVAFX\photofusionfx_optimized\src\main\java\com\photofusionfx\service\AssetLibraryService.java
+C:\Users\winsl\OneDrive\Documents\A WIG3003 JAVAFX\photofusionfx_optimized\src\main\java\com\photofusionfx\service\DatabaseManager.java
+C:\Users\winsl\OneDrive\Documents\A WIG3003 JAVAFX\photofusionfx_optimized\src\main\java\com\photofusionfx\service\EmailService.java
+C:\Users\winsl\OneDrive\Documents\A WIG3003 JAVAFX\photofusionfx_optimized\src\main\java\com\photofusionfx\service\ImageProcessingService.java
+C:\Users\winsl\OneDrive\Documents\A WIG3003 JAVAFX\photofusionfx_optimized\src\main\java\com\photofusionfx\service\LayerRenderService.java
+C:\Users\winsl\OneDrive\Documents\A WIG3003 JAVAFX\photofusionfx_optimized\src\main\java\com\photofusionfx\service\LibraryService.java
+C:\Users\winsl\OneDrive\Documents\A WIG3003 JAVAFX\photofusionfx_optimized\src\main\java\com\photofusionfx\service\MosaicService.java
+C:\Users\winsl\OneDrive\Documents\A WIG3003 JAVAFX\photofusionfx_optimized\src\main\java\com\photofusionfx\service\ObjectExtractionService.java
+C:\Users\winsl\OneDrive\Documents\A WIG3003 JAVAFX\photofusionfx_optimized\src\main\java\com\photofusionfx\service\VideoService.java
+C:\Users\winsl\OneDrive\Documents\A WIG3003 JAVAFX\photofusionfx_optimized\src\main\java\com\photofusionfx\ui\AssetLibraryPane.java
+C:\Users\winsl\OneDrive\Documents\A WIG3003 JAVAFX\photofusionfx_optimized\src\main\java\com\photofusionfx\ui\EditorPane.java
+C:\Users\winsl\OneDrive\Documents\A WIG3003 JAVAFX\photofusionfx_optimized\src\main\java\com\photofusionfx\ui\ExtractorPane.java
+C:\Users\winsl\OneDrive\Documents\A WIG3003 JAVAFX\photofusionfx_optimized\src\main\java\com\photofusionfx\ui\MosaicPane.java
+C:\Users\winsl\OneDrive\Documents\A WIG3003 JAVAFX\photofusionfx_optimized\src\main\java\com\photofusionfx\ui\RepositoryPane.java
+C:\Users\winsl\OneDrive\Documents\A WIG3003 JAVAFX\photofusionfx_optimized\src\main\java\com\photofusionfx\ui\SharePane.java
+C:\Users\winsl\OneDrive\Documents\A WIG3003 JAVAFX\photofusionfx_optimized\src\main\java\com\photofusionfx\ui\VideoPane.java
+C:\Users\winsl\OneDrive\Documents\A WIG3003 JAVAFX\photofusionfx_optimized\src\main\java\com\photofusionfx\util\Dialogs.java
+C:\Users\winsl\OneDrive\Documents\A WIG3003 JAVAFX\photofusionfx_optimized\src\main\java\com\photofusionfx\util\FileUtils.java
+C:\Users\winsl\OneDrive\Documents\A WIG3003 JAVAFX\photofusionfx_optimized\src\main\java\com\photofusionfx\util\ImageUtils.java
