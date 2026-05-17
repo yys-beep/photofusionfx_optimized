@@ -79,7 +79,7 @@ public class ExtractorPane extends BorderPane {
     private double panY = 0.0;
     private double lastPanMouseX = 0.0;
     private double lastPanMouseY = 0.0;
-    private boolean panning = false;
+    private boolean panning = false;   
 
     private BufferedImage originalImage;
     private BufferedImage previewImage;
