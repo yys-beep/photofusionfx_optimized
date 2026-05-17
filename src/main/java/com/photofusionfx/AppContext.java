@@ -3,7 +3,7 @@ package com.photofusionfx;
 import com.photofusionfx.model.PhotoItem;
 import com.photofusionfx.service.AssetLibraryService;
 import com.photofusionfx.service.EmailService;
-import com.photofusionfx.service.ImageProcessingService;
+import com.photofusionfx.service.ImageProcessingService;   
 import com.photofusionfx.service.LayerRenderService;
 import com.photofusionfx.service.LibraryService;
 import com.photofusionfx.service.MosaicService;
