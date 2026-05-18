@@ -121,6 +121,7 @@ public class ExtractorPane extends BorderPane {
         ScrollPane leftScroll = new ScrollPane(buildLeftPanel());
         leftScroll.setFitToWidth(true);
         leftScroll.setHbarPolicy(ScrollPane.ScrollBarPolicy.NEVER);
+        leftScroll.setVbarPolicy(ScrollPane.ScrollBarPolicy.AS_NEEDED); // Explicitly ensure vertical scrolling
         leftScroll.setStyle("-fx-background-color: transparent;");
         leftScroll.setPrefWidth(LEFT_DEFAULT_WIDTH);
         leftScroll.setMinWidth(200); // allow shrink, but not too small
@@ -133,6 +134,7 @@ public class ExtractorPane extends BorderPane {
         ScrollPane rightScroll = new ScrollPane(buildRightPanel());
         rightScroll.setFitToWidth(true);
         rightScroll.setHbarPolicy(ScrollPane.ScrollBarPolicy.NEVER);
+        rightScroll.setVbarPolicy(ScrollPane.ScrollBarPolicy.AS_NEEDED); // Explicitly ensure vertical scrolling
         rightScroll.setStyle("-fx-background-color: transparent;");
         rightScroll.setPrefWidth(RIGHT_DEFAULT_WIDTH);
         rightScroll.setMinWidth(240);
@@ -140,10 +142,8 @@ public class ExtractorPane extends BorderPane {
 
         // MAIN SPLIT PANE
         SplitPane mainSplit = new SplitPane(leftScroll, canvasArea, rightScroll);
-        setCenter(mainSplit);
 
         // Set divider positions ONCE after layout, so left/right start at the pixel widths above.
-        // After that, user divider dragging is respected.
         Platform.runLater(() -> setDefaultMainSplit(mainSplit, LEFT_DEFAULT_WIDTH, RIGHT_DEFAULT_WIDTH));
 
         // TOP TOOLBAR
@@ -177,7 +177,6 @@ public class ExtractorPane extends BorderPane {
         HBox topToolbar = new HBox(toggleLeftBtn, topSpacer, toggleRightBtn);
         topToolbar.setAlignment(Pos.CENTER);
         topToolbar.setPadding(new Insets(0, 0, 10, 0));
-        setTop(topToolbar);
 
         // BOTTOM TOOLBAR (ZOOM CONTROLS)
         Button fitZoomButton = new Button("Fit");
@@ -202,7 +201,24 @@ public class ExtractorPane extends BorderPane {
         HBox zoomBar = new HBox(15, new Label("Zoom:"), zoomSlider, zoomLabel, fitZoomButton, zoom200Button, zoom400Button);
         zoomBar.setAlignment(Pos.CENTER);
         zoomBar.setPadding(new Insets(15, 10, 5, 10));
-        setBottom(zoomBar);
+
+        // --- NEW SCROLLABLE ROOT FIX ---
+        // We pack the top, center, and bottom into an inner layout
+        BorderPane innerLayout = new BorderPane();
+        innerLayout.setTop(topToolbar);
+        innerLayout.setCenter(mainSplit);
+        innerLayout.setBottom(zoomBar);
+
+        // Then we wrap that layout in a master ScrollPane
+        ScrollPane rootScroll = new ScrollPane(innerLayout);
+        rootScroll.setFitToWidth(true);
+        rootScroll.setFitToHeight(true);
+        rootScroll.setVbarPolicy(ScrollPane.ScrollBarPolicy.AS_NEEDED);
+        rootScroll.setHbarPolicy(ScrollPane.ScrollBarPolicy.AS_NEEDED);
+        rootScroll.setStyle("-fx-background-color: transparent;");
+
+        // Set the scroll pane as the true center of the ExtractorPane
+        setCenter(rootScroll);
 
         attachCanvasHandlers();
         debounce.setOnFinished(e -> renderExtractionPreview());
@@ -228,20 +244,14 @@ public class ExtractorPane extends BorderPane {
 
     /**
      * Sets divider positions so left is ~leftWidthPx and right is ~rightWidthPx.
-     * Runs once on startup (and when re-showing panes), but does NOT keep forcing widths,
-     * so the user can drag resize freely afterwards.
      */
     private void setDefaultMainSplit(SplitPane mainSplit, double leftWidthPx, double rightWidthPx) {
         double totalW = mainSplit.getWidth();
         if (totalW <= 0) return;
 
-        // divider1: leftWidth / totalWidth
         double d1 = leftWidthPx / totalW;
-
-        // divider2: (totalWidth - rightWidth) / totalWidth
         double d2 = (totalW - rightWidthPx) / totalW;
 
-        // clamp
         d1 = Math.max(0.05, Math.min(0.90, d1));
         d2 = Math.max(d1 + 0.05, Math.min(0.95, d2));
 
@@ -413,16 +423,19 @@ public class ExtractorPane extends BorderPane {
         VBox rightBox = new VBox(8, new Label("Extracted object preview"), right);
         resultViewBox = rightBox;
 
+        // Reduced min heights so the window can shrink on smaller screens
         left.setPrefViewportHeight(720);
-        left.setMinHeight(560);
+        left.setMinHeight(250); 
         left.setPrefHeight(760);
+        
         right.setPrefViewportHeight(720);
-        right.setMinHeight(560);
+        right.setMinHeight(250);
         right.setPrefHeight(760);
 
-        leftBox.setMinHeight(600);
+        leftBox.setMinHeight(300);
         leftBox.setPrefHeight(790);
-        rightBox.setMinHeight(360);
+        
+        rightBox.setMinHeight(300);
 
         leftBox.setMaxSize(Double.MAX_VALUE, Double.MAX_VALUE);
         rightBox.setMaxSize(Double.MAX_VALUE, Double.MAX_VALUE);
