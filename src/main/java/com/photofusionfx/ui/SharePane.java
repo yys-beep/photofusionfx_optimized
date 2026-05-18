@@ -190,6 +190,7 @@ public class SharePane extends VBox {
 
     private void saveConfig() {
         try {
+            //persist SMTP settings locally so user doesnt have to re-enter app password on every launch
             context.getEmailService().saveConfig(buildEmailConfig());
             Dialogs.info("Saved", "Mail settings saved locally for this application.");
         } catch (Exception ex) {
@@ -198,10 +199,12 @@ public class SharePane extends VBox {
     }
 
     private void sendEmail() {
+        //validate file exists on disk before attempting STMP send
         if (selectedFile == null || !selectedFile.exists()) {
             Dialogs.warn("No File Selected", "Choose an image or video file to attach first.");
             return;
         }
+        //validate required address fields are filled before opening SMTP connection
         if (toField.getText().isBlank() || fromField.getText().isBlank()) {
             Dialogs.warn("Missing Fields", "Fill in both the From and To email addresses.");
             return;
@@ -247,6 +250,7 @@ public class SharePane extends VBox {
         return config;
     }
 
+    //whatsapp has no public java api for direct file injection
     private void openWhatsAppHelper() {
         if (selectedFile == null || !selectedFile.exists()) {
             Dialogs.warn("No File Selected", "Choose an image or video file first.");
@@ -255,7 +259,9 @@ public class SharePane extends VBox {
         try {
             String caption = bodyArea.getText().isBlank() ? "Shared via PhotoFusion FX" : bodyArea.getText().trim();
             ClipboardContent content = new ClipboardContent();
+            //step 1: copy actualfile object to clipboard so user can paste it in ws chat
             content.putFiles(List.of(selectedFile));
+            //step 2: copy caption text so ws web pre fills the message box via wa.me URL
             content.putString(caption);
             Clipboard.getSystemClipboard().setContent(content);
 
