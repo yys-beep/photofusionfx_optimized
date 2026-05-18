@@ -187,7 +187,7 @@ public class EditorPane extends BorderPane {
         exportButton.setOnAction(e -> exportCompositeImage(false));
         exportButton.getStyleClass().add("success-button");
 
-        Button saveToLibraryButton = new Button("Save Composite into Library");
+        Button saveToLibraryButton = new Button("Save Composite to Repository");
         saveToLibraryButton.setOnAction(e -> saveCompositeIntoLibrary());
         saveToLibraryButton.getStyleClass().add("success-button");
 
