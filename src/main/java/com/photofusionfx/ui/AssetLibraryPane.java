@@ -78,7 +78,9 @@ public class AssetLibraryPane extends BorderPane {
         previewPane.setPadding(new Insets(12));
 
         VBox left = new VBox(8, new Label("Reusable objects / files"), assetList);
-        left.setPrefWidth(360);
+        left.setMinWidth(300); // Prevents it from getting squished
+        left.setMaxWidth(300); // Prevents it from expanding
+        left.setPrefWidth(300);
         VBox right = new VBox(8, new Label("Preview"), previewPane, detailLabel);
         VBox.setVgrow(assetList, Priority.ALWAYS);
         VBox.setVgrow(previewPane, Priority.ALWAYS);
