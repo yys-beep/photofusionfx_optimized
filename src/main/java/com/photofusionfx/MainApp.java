@@ -71,7 +71,7 @@ public class MainApp extends Application {
 
             TabPane tabPane = new TabPane(
                     new Tab("Repository", repositoryPane),
-                    new Tab("Editor", editorPane),
+                    new Tab("Image Editor", editorPane),
                     new Tab("Object Extractor", extractorPane),
                     new Tab("Asset Library", assetLibraryPane),
                     new Tab("Mosaic Studio", mosaicPane),

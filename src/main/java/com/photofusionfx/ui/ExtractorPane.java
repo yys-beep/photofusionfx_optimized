@@ -11,7 +11,6 @@ import com.photofusionfx.util.ImageUtils;
 import javafx.animation.PauseTransition;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
-import javafx.scene.SnapshotParameters;
 import javafx.scene.canvas.Canvas;
 import javafx.scene.canvas.GraphicsContext;
 import javafx.scene.control.Button;
@@ -59,11 +58,11 @@ public class ExtractorPane extends BorderPane {
     private final AppContext context;
     private final Canvas sourceCanvas = new Canvas(720, 620);
     private final Canvas resultCanvas = new Canvas(720, 620);
-    private final Pane sourceCanvasPane = new Pane(sourceCanvas);
+    private final Pane sourceCanvasPane = new Pane(sourceCanvas);   
     private final Pane resultCanvasPane = new Pane(resultCanvas);
     private final Label selectionLabel = new Label("Selected image: none");
     private final Label seedLabel = new Label("Selection: none");
-    private final ComboBox<String> toolBox = new ComboBox<>();
+    private final javafx.scene.control.ToggleGroup toolGroup = new javafx.scene.control.ToggleGroup();
     private final Slider thresholdSlider = new Slider(0.04, 0.40, 0.16);
     private final Slider brushSizeSlider = new Slider(4, 120, 30);
     private final ColorPicker outlineColorPicker = new ColorPicker(Color.WHITE);
@@ -82,7 +81,7 @@ public class ExtractorPane extends BorderPane {
     private double panY = 0.0;
     private double lastPanMouseX = 0.0;
     private double lastPanMouseY = 0.0;
-    private boolean panning = false;
+    private boolean panning = false;   
 
     private BufferedImage originalImage;
     private BufferedImage previewImage;
@@ -111,16 +110,77 @@ public class ExtractorPane extends BorderPane {
         configureSlider(brushSizeSlider, true);
         configureSlider(outlineWidthSlider, true);
         configureSlider(tintStrengthSlider, false);
-        toolBox.getItems().setAll(TOOL_MAGIC_WAND, TOOL_BRUSH_ADD, TOOL_BRUSH_ERASE, TOOL_LASSO);
-        toolBox.getSelectionModel().selectFirst();
 
-        setCenter(buildScrollableLayout());
 
-        // zoom controls
+        // 1. LEFT PANEL (Tools & Selection)
+        ScrollPane leftScroll = new ScrollPane(buildLeftPanel());
+        leftScroll.setFitToWidth(true);
+        leftScroll.setHbarPolicy(ScrollPane.ScrollBarPolicy.NEVER);
+        leftScroll.setMinWidth(200); // Smallest allowed width
+        leftScroll.setPrefWidth(200); // Default startup width (smallest)
+        leftScroll.setStyle("-fx-background-color: transparent;");
+        // 2. CENTER CANVAS (Views Split Pane)
+        SplitPane canvasArea = buildViews();
+
+        // 3. RIGHT PANEL (Properties & Export)
+        ScrollPane rightScroll = new ScrollPane(buildRightPanel());
+        rightScroll.setFitToWidth(true);
+        rightScroll.setHbarPolicy(ScrollPane.ScrollBarPolicy.NEVER);
+        rightScroll.setMinWidth(220); // Allows the user to shrink it if desired
+        rightScroll.setPrefWidth(320); // Default startup width (keeps your fixed size!)
+        rightScroll.setStyle("-fx-background-color: transparent;");
+
+        // MAIN SPLIT PANE
+        SplitPane mainSplit = new SplitPane(leftScroll, canvasArea, rightScroll);
+        mainSplit.setDividerPositions(0.18, 0.75);
+        setCenter(mainSplit);
+
+        // TOP TOOLBAR
+        Button toggleLeftBtn = new Button("👁 Hide Toolbox");
+        Button toggleRightBtn = new Button("👁 Hide Properties");
+
+        toggleLeftBtn.setOnAction(e -> {
+            if (mainSplit.getItems().contains(leftScroll)) {
+                mainSplit.getItems().remove(leftScroll);
+                toggleLeftBtn.setText("👁 Show Toolbox");
+            } else {
+                mainSplit.getItems().add(0, leftScroll);
+                mainSplit.setDividerPositions(0.18, 0.75);
+                toggleLeftBtn.setText("👁 Hide Toolbox");
+            }
+        });
+
+        toggleRightBtn.setOnAction(e -> {
+            if (mainSplit.getItems().contains(rightScroll)) {
+                mainSplit.getItems().remove(rightScroll);
+                toggleRightBtn.setText("👁 Show Properties");
+            } else {
+                mainSplit.getItems().add(rightScroll);
+                mainSplit.setDividerPositions(0.18, 0.75);
+                toggleRightBtn.setText("👁 Hide Properties");
+            }
+        });
+
+        Region topSpacer = new Region();
+        HBox.setHgrow(topSpacer, Priority.ALWAYS);
+        HBox topToolbar = new HBox(toggleLeftBtn, topSpacer, toggleRightBtn);
+        topToolbar.setAlignment(Pos.CENTER);
+        topToolbar.setPadding(new Insets(0, 0, 10, 0));
+        setTop(topToolbar);
+
+        // BOTTOM TOOLBAR (ZOOM CONTROLS)
+        Button fitZoomButton = new Button("Fit");
+        fitZoomButton.setOnAction(e -> resetZoom());
+        Button zoom200Button = new Button("200%");
+        zoom200Button.setOnAction(e -> setZoom(2.0));
+        Button zoom400Button = new Button("400%");
+        zoom400Button.setOnAction(e -> setZoom(4.0));
+
         zoomSlider.setShowTickLabels(true);
         zoomSlider.setShowTickMarks(true);
         zoomSlider.setMajorTickUnit(1.0);
         zoomSlider.setBlockIncrement(0.25);
+        zoomSlider.setPrefWidth(400); // Make the slider span longer
         zoomSlider.valueProperty().addListener((obs, ov, nv) -> {
             userZoom = nv.doubleValue();
             zoomLabel.setText(String.format("%d%%", (int) Math.round(userZoom * 100)));
@@ -128,10 +188,15 @@ public class ExtractorPane extends BorderPane {
             drawCanvases();
         });
 
+        HBox zoomBar = new HBox(15, new Label("Zoom:"), zoomSlider, zoomLabel, fitZoomButton, zoom200Button, zoom400Button);
+        zoomBar.setAlignment(Pos.CENTER);
+        zoomBar.setPadding(new Insets(15, 10, 5, 10));
+        setBottom(zoomBar);
+
         attachCanvasHandlers();
         debounce.setOnFinished(e -> renderExtractionPreview());
         thresholdSlider.valueProperty().addListener((obs, oldValue, newValue) -> {
-            if (TOOL_MAGIC_WAND.equals(toolBox.getValue())) {
+            if (TOOL_MAGIC_WAND.equals(getActiveTool())) {
                 debounce.playFromStart();
             }
         });
@@ -149,17 +214,124 @@ public class ExtractorPane extends BorderPane {
         loadSelectedPhoto(context.getSelectedPhoto());
     }
 
-    private ScrollPane buildScrollableLayout() {
-        VBox content = new VBox(12, buildControls(), buildViews());
-        content.setFillWidth(true);
-        content.setMinWidth(900);
+    private VBox buildLeftPanel() {
+        Button clearButton = new Button("Clear Selection");
+        clearButton.setOnAction(e -> clearSelection());
+        
+        Button invertButton = new Button("Invert Selection");
+        invertButton.setOnAction(e -> invertSelection());
 
-        ScrollPane scrollPane = new ScrollPane(content);
-        scrollPane.setFitToWidth(true);
-        scrollPane.setHbarPolicy(ScrollPane.ScrollBarPolicy.NEVER);
-        scrollPane.setVbarPolicy(ScrollPane.ScrollBarPolicy.AS_NEEDED);
-        scrollPane.setStyle("-fx-background-color: transparent; -fx-border-color: transparent;");
-        return scrollPane;
+        javafx.scene.control.ToggleButton wandBtn = new javafx.scene.control.ToggleButton("Magic Wand");
+            wandBtn.setUserData(TOOL_MAGIC_WAND);
+            wandBtn.setMaxWidth(Double.MAX_VALUE);
+
+            javafx.scene.control.ToggleButton brushAddBtn = new javafx.scene.control.ToggleButton("Brush Add");
+            brushAddBtn.setUserData(TOOL_BRUSH_ADD);
+            brushAddBtn.setMaxWidth(Double.MAX_VALUE);
+
+            javafx.scene.control.ToggleButton brushEraseBtn = new javafx.scene.control.ToggleButton("Brush Erase");
+            brushEraseBtn.setUserData(TOOL_BRUSH_ERASE);
+            brushEraseBtn.setMaxWidth(Double.MAX_VALUE);
+
+            javafx.scene.control.ToggleButton lassoBtn = new javafx.scene.control.ToggleButton("Lasso");
+            lassoBtn.setUserData(TOOL_LASSO);
+            lassoBtn.setMaxWidth(Double.MAX_VALUE);
+
+            wandBtn.setToggleGroup(toolGroup);
+            brushAddBtn.setToggleGroup(toolGroup);
+            brushEraseBtn.setToggleGroup(toolGroup);
+            lassoBtn.setToggleGroup(toolGroup);
+            wandBtn.setSelected(true);
+
+            VBox toolButtons = new VBox(5, new Label("Active Tool:"), wandBtn, brushAddBtn, brushEraseBtn, lassoBtn);        
+
+        VBox controls = new VBox(15,
+                selectionLabel,
+                new Separator(),
+                new Label("Selection Tools"),
+                toolButtons,
+                sliderRow("Brush Size", brushSizeSlider),
+                sliderRow("Wand Threshold", thresholdSlider),
+                new Separator(),
+                new Label("Selection Status"),
+                seedLabel,
+                new HBox(10, clearButton, invertButton)
+        );
+        controls.setPadding(new Insets(4, 16, 4, 16));
+        return controls;
+    }
+
+    private VBox buildRightPanel() {
+        Button exportPngButton = new Button("Export PNG");
+        exportPngButton.setOnAction(e -> exportExtractedObject());
+        exportPngButton.getStyleClass().add("success-button");
+        
+        Button saveAssetButton = new Button("Save to Asset Library");
+        saveAssetButton.setOnAction(e -> saveToAssetLibrary());
+        saveAssetButton.getStyleClass().add("success-button");
+        
+        Button copyButton = new Button("Copy Object File");
+        copyButton.setOnAction(e -> copyExtractedObject());
+        
+        Button saveToLibraryButton = new Button("Save into Photo Library");
+        saveToLibraryButton.setOnAction(e -> saveIntoLibrary());
+        saveToLibraryButton.getStyleClass().add("success-button");
+
+        Button resetOptionsBtn = new Button("Reset Options");
+        resetOptionsBtn.setOnAction(e -> {
+            outlineColorPicker.setValue(Color.WHITE);
+            outlineWidthSlider.setValue(0);
+            tintColorPicker.setValue(Color.TRANSPARENT);
+            tintStrengthSlider.setValue(0);
+            enhanceCheck.setSelected(false);
+            largeSelectionAreaCheck.setSelected(true);
+            renderExtractionPreview();
+        });
+        
+
+        VBox controls = new VBox(15,
+                new Label("Extraction Options"),
+                labelledControl("Outline Color", outlineColorPicker),
+                sliderRow("Outline Width", outlineWidthSlider),
+                new Separator(),
+                labelledControl("Tint / Scenario Color", tintColorPicker),
+                sliderRow("Tint Strength", tintStrengthSlider),
+                new Separator(),
+                enhanceCheck,
+                largeSelectionAreaCheck,
+                new Separator(),
+                new Label("Export & Save Actions"),
+                resetOptionsBtn,
+                exportPngButton,
+                saveAssetButton,
+                copyButton,
+                saveToLibraryButton
+            );
+        controls.setPadding(new Insets(4, 16, 4, 16));
+        return controls;
+    }
+
+    private VBox sliderRow(String title, Slider slider) {
+        Label valueLabel = new Label();
+        String format = title.equals("Wand Threshold") || title.equals("Tint Strength") ? "%.2f" : "%.0f";
+        valueLabel.textProperty().bind(slider.valueProperty().asString(format));
+        valueLabel.setMinWidth(Region.USE_PREF_SIZE);
+
+        Label titleLabel = new Label(title);
+        titleLabel.setMinWidth(Region.USE_PREF_SIZE);
+
+        Region spacer = new Region();
+        HBox.setHgrow(spacer, Priority.ALWAYS);
+
+        HBox header = new HBox(8, titleLabel, spacer, valueLabel);
+        header.setAlignment(Pos.CENTER_LEFT);
+        return new VBox(6, header, slider);
+    }
+
+    private VBox labelledControl(String title, javafx.scene.Node node) {
+        Label titleLabel = new Label(title);
+        titleLabel.setMinWidth(Region.USE_PREF_SIZE);
+        return new VBox(6, titleLabel, node);
     }
 
     private void resetZoom() {
@@ -172,72 +344,13 @@ public class ExtractorPane extends BorderPane {
         zoomSlider.setValue(clamp(zoom, zoomSlider.getMin(), zoomSlider.getMax()));
     }
 
-    private VBox buildControls() {
-        Button extractButton = new Button("Update Extraction Preview");
-        extractButton.setOnAction(e -> renderExtractionPreview());
-        extractButton.getStyleClass().add("primary-button");
-        Button clearButton = new Button("Clear Selection");
-        clearButton.setOnAction(e -> clearSelection());
-        Button invertButton = new Button("Invert Selection");
-        invertButton.setOnAction(e -> invertSelection());
-        Button exportPngButton = new Button("Export PNG");
-        exportPngButton.setOnAction(e -> exportExtractedObject());
-        exportPngButton.getStyleClass().add("success-button");
-        Button saveAssetButton = new Button("Save to Asset Library");
-        saveAssetButton.setOnAction(e -> saveToAssetLibrary());
-        saveAssetButton.getStyleClass().add("success-button");
-        Button copyButton = new Button("Copy Object as File + Image");
-        copyButton.setOnAction(e -> copyExtractedObject());
-        Button saveToLibraryButton = new Button("Save into Photo Library");
-        saveToLibraryButton.setOnAction(e -> saveIntoLibrary());
-        saveToLibraryButton.getStyleClass().add("success-button");
-        Button fitZoomButton = new Button("Fit");
-        fitZoomButton.setOnAction(e -> resetZoom());
-        Button zoom200Button = new Button("200%");
-        zoom200Button.setOnAction(e -> setZoom(2.0));
-        Button zoom400Button = new Button("400%");
-        zoom400Button.setOnAction(e -> setZoom(4.0));
-        Button zoom800Button = new Button("800%");
-        zoom800Button.setOnAction(e -> setZoom(8.0));
-
-        HBox zoomRow = new HBox(8, new Label("Zoom"), zoomSlider, zoomLabel, fitZoomButton, zoom200Button, zoom400Button, zoom800Button);
-        zoomRow.setAlignment(Pos.CENTER_LEFT);
-        HBox.setHgrow(zoomSlider, Priority.ALWAYS);
-
-        VBox controls = new VBox(10,
-                selectionLabel,
-                new Separator(),
-                new HBox(12, new Label("Selection tool"), toolBox, new Label("Brush size"), brushSizeSlider),
-                zoomRow,
-                labelledRow("Magic-wand color threshold", thresholdSlider),
-                seedLabel,
-                new HBox(10, extractButton, clearButton, invertButton, largeSelectionAreaCheck),
-                new Separator(),
-                new HBox(12, new Label("Outline"), outlineColorPicker, new Label("Width"), outlineWidthSlider, enhanceCheck),
-                new HBox(12, new Label("Tint / scenario color"), tintColorPicker, new Label("Strength"), tintStrengthSlider),
-                new HBox(10, exportPngButton, saveAssetButton, copyButton, saveToLibraryButton)
-        );
-        controls.setPadding(new Insets(0, 0, 12, 0));
-        controls.setFillWidth(true);
-        return controls;
-    }
-
-    private HBox labelledRow(String text, Slider slider) {
-        Label value = new Label();
-        value.textProperty().bind(slider.valueProperty().asString("%.2f"));
-        HBox header = new HBox(10, new Label(text), spacer(), value);
-        header.setAlignment(Pos.CENTER_LEFT);
-        VBox wrapper = new VBox(6, header, slider);
-        HBox row = new HBox(wrapper);
-        HBox.setHgrow(wrapper, Priority.ALWAYS);
-        return row;
-    }
-
     private SplitPane buildViews() {
         ScrollPane left = new ScrollPane(wrapCanvas(sourceCanvas, sourceCanvasPane));
         left.setFitToWidth(false);
         left.setFitToHeight(false);
-        left.setPannable(true);
+        // FIX: Pannable is set to false so dragging brush doesn't pull the screen! 
+        // (Users can still pan by right-clicking and dragging).
+        left.setPannable(false); 
         left.getStyleClass().add("preview-box");
         left.setVbarPolicy(ScrollPane.ScrollBarPolicy.AS_NEEDED);
         left.setHbarPolicy(ScrollPane.ScrollBarPolicy.AS_NEEDED);
@@ -245,7 +358,7 @@ public class ExtractorPane extends BorderPane {
         ScrollPane right = new ScrollPane(wrapCanvas(resultCanvas, resultCanvasPane));
         right.setFitToWidth(false);
         right.setFitToHeight(false);
-        right.setPannable(true);
+        right.setPannable(false);
         right.getStyleClass().add("preview-box");
         right.setVbarPolicy(ScrollPane.ScrollBarPolicy.AS_NEEDED);
         right.setHbarPolicy(ScrollPane.ScrollBarPolicy.AS_NEEDED);
@@ -253,7 +366,7 @@ public class ExtractorPane extends BorderPane {
         bindCanvasToViewport(sourceCanvasPane, left, true);
         bindCanvasToViewport(resultCanvasPane, right, false);
 
-        VBox leftBox = new VBox(8, new Label("Source image selection mask: click / brush / lasso"), left);
+        VBox leftBox = new VBox(8, new Label("Source image selection mask: click / brush / lasso (Right-Click to Pan)"), left);
         VBox rightBox = new VBox(8, new Label("Extracted object preview"), right);
         resultViewBox = rightBox;
         left.setPrefViewportHeight(720);
@@ -329,7 +442,7 @@ public class ExtractorPane extends BorderPane {
                 return;
             }
 
-            String tool = toolBox.getValue();
+            String tool = getActiveTool();
             double[] imagePoint = sourceCanvasToImage(event.getX(), event.getY());
             if (imagePoint == null) {
                 return;
@@ -343,6 +456,7 @@ public class ExtractorPane extends BorderPane {
                 lassoPoints.add(imagePoint);
                 drawCanvases();
             }
+            event.consume();
         });
 
         sourceCanvas.setOnMouseDragged(event -> {
@@ -361,7 +475,7 @@ public class ExtractorPane extends BorderPane {
             if (previewImage == null) {
                 return;
             }
-            String tool = toolBox.getValue();
+            String tool = getActiveTool();
             double[] imagePoint = sourceCanvasToImage(event.getX(), event.getY());
             if (imagePoint == null) {
                 return;
@@ -372,6 +486,8 @@ public class ExtractorPane extends BorderPane {
                 lassoPoints.add(imagePoint);
                 drawCanvases();
             }
+
+            event.consume();
         });
 
         sourceCanvas.setOnMouseReleased(event -> {
@@ -379,7 +495,7 @@ public class ExtractorPane extends BorderPane {
                 panning = false;
                 return;
             }
-            if (TOOL_LASSO.equals(toolBox.getValue()) && previewImage != null && lassoPoints.size() >= 3) {
+            if (TOOL_LASSO.equals(getActiveTool()) && previewImage != null && lassoPoints.size() >= 3) {
                 addLassoSelection();
                 lassoPoints.clear();
                 renderExtractionPreview();
@@ -809,9 +925,6 @@ public class ExtractorPane extends BorderPane {
         }
     }
 
-    /**
-     * Map canvas coordinates to image coordinates taking zoom & pan into account.
-     */
     private double[] sourceCanvasToImage(double canvasX, double canvasY) {
         if (previewImage == null) {
             return null;
@@ -862,4 +975,12 @@ public class ExtractorPane extends BorderPane {
         slider.setBlockIncrement(integerLabels ? 1 : 0.01);
         slider.setMajorTickUnit((slider.getMax() - slider.getMin()) / 4.0);
     }
+
+    private String getActiveTool() {
+        if (toolGroup.getSelectedToggle() != null) {
+            return (String) toolGroup.getSelectedToggle().getUserData();
+        }
+        return TOOL_MAGIC_WAND;
+    }
+
 }
