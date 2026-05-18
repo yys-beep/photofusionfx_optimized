@@ -1,5 +1,7 @@
 package com.photofusionfx.ui;
 
+//EditorPane provides layer based non destructive image editing with text and asset layers
+
 import com.photofusionfx.AppContext;
 import com.photofusionfx.model.EditParameters;
 import com.photofusionfx.model.LayerType;
@@ -937,4 +939,3 @@ VBox controls = new VBox(10,
         slider.setMajorTickUnit((slider.getMax() - slider.getMin()) / 4.0);
     }
 }
-
