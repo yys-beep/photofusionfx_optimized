@@ -59,7 +59,7 @@ public class ExtractorPane extends BorderPane {
     private final AppContext context;
     private final Canvas sourceCanvas = new Canvas(720, 620);
     private final Canvas resultCanvas = new Canvas(720, 620);
-    private final Pane sourceCanvasPane = new Pane(sourceCanvas);
+    private final Pane sourceCanvasPane = new Pane(sourceCanvas);   
     private final Pane resultCanvasPane = new Pane(resultCanvas);
     private final Label selectionLabel = new Label("Selected image: none");
     private final Label seedLabel = new Label("Selection: none");
@@ -81,7 +81,7 @@ public class ExtractorPane extends BorderPane {
     private double panY = 0.0;
     private double lastPanMouseX = 0.0;
     private double lastPanMouseY = 0.0;
-    private boolean panning = false;
+    private boolean panning = false;   
 
     private BufferedImage originalImage;
     private BufferedImage previewImage;
@@ -997,4 +997,5 @@ public class ExtractorPane extends BorderPane {
         }
         return TOOL_MAGIC_WAND;
     }
+
 }
