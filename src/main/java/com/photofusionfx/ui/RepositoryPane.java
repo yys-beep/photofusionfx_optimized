@@ -35,6 +35,13 @@ import java.sql.SQLException;
 import java.util.List;
 import java.util.Locale;
 import java.util.Optional;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
+import java.util.ArrayList;
+import javafx.scene.layout.FlowPane;
+import javafx.scene.control.ToggleButton;
 
 public class RepositoryPane extends BorderPane {
     private final AppContext context;
@@ -44,10 +51,17 @@ public class RepositoryPane extends BorderPane {
     private final Label pathValue = new Label("—");
     private final Label importedAtValue = new Label("—");
     private final TextArea annotationArea = new TextArea();
-    private final CheckBox favouriteCheckBox = new CheckBox("Favourite photo");
+    private final ToggleButton favouriteToggleButton = new ToggleButton("☆ Mark Favourite");
+    private final Button toggleOverlayButton = new Button("Hide Annotation");
+    private boolean isAnnotationHidden = false; // Tracks the hide/show state
     private final TextField searchField = new TextField();
     private final ComboBox<String> filterBox = new ComboBox<>();
     private boolean loadingDetails;
+    private final Label annotationOverlayLabel = new Label();
+    private final FlowPane tagsPane = new FlowPane(8, 8);
+    private final VBox overlayBox = new VBox(8);
+    private final Label lastModifiedLabel = new Label("Last Modified: —");
+    
 
     public RepositoryPane(AppContext context) {
         this.context = context;
@@ -97,7 +111,7 @@ public class RepositoryPane extends BorderPane {
 
     private SplitPane buildContent() {
         // Right details panel default width at startup (user can resize by dragging divider)
-        final double DETAILS_DEFAULT_WIDTH = 500;
+        final double DETAILS_DEFAULT_WIDTH = 700;
 
         tilePane.setHgap(12);
         tilePane.setVgap(12);
@@ -116,14 +130,38 @@ public class RepositoryPane extends BorderPane {
         previewImageView.setFitWidth(760);
         previewImageView.setFitHeight(480);
 
-        StackPane previewBox = new StackPane(previewImageView);
+StackPane previewBox = new StackPane(previewImageView);
         previewBox.getStyleClass().add("preview-box");
         previewBox.setMinHeight(500);
+
+        // --- SETUP VISUAL OVERLAY & TAGS BANNER ---
+        annotationOverlayLabel.setWrapText(true);
+        annotationOverlayLabel.setStyle("-fx-text-fill: white; -fx-font-size: 16px; -fx-font-weight: bold;");
+        
+        tagsPane.setAlignment(Pos.CENTER);
+        
+        overlayBox.setAlignment(Pos.BOTTOM_CENTER);
+        overlayBox.setPadding(new Insets(15, 20, 15, 20));
+        // Sleek, semi-transparent dark gradient banner
+        overlayBox.setStyle("-fx-background-color: transparent;");
+        overlayBox.getChildren().addAll(annotationOverlayLabel, tagsPane);
+        overlayBox.setVisible(false); // Hidden by default if there's no annotation
+        
+        // Push the overlay to the bottom of the image
+        StackPane.setAlignment(overlayBox, Pos.BOTTOM_CENTER);
+        previewBox.getChildren().add(overlayBox);
+
+        // --- SETUP TIMESTAMP LABEL ---
+        lastModifiedLabel.setStyle("-fx-text-fill: #888888; -fx-font-size: 11px; -fx-font-style: italic;");
 
         annotationArea.setPromptText("Add a personalized note for the selected image...");
         annotationArea.setPrefRowCount(5);
 
-        favouriteCheckBox.selectedProperty().addListener((obs, oldValue, newValue) -> {
+        // --- 1. FAVOURITE TOGGLE BUTTON LOGIC & STYLING ---
+        favouriteToggleButton.getStyleClass().add("primary-button"); 
+        // Updated to exact yellow with black text
+        favouriteToggleButton.setStyle("-fx-background-color: #FFFBA7; -fx-text-fill: black; -fx-font-weight: bold;");
+        favouriteToggleButton.selectedProperty().addListener((obs, oldValue, newValue) -> {
             if (loadingDetails || context.getSelectedPhoto() == null) {
                 return;
             }
@@ -131,14 +169,31 @@ public class RepositoryPane extends BorderPane {
                 context.getSelectedPhoto().setFavorite(newValue);
                 context.getLibraryService().updateFavorite(context.getSelectedPhoto());
                 rebuildTiles();
+                favouriteToggleButton.setText(newValue ? "★ Favourited" : "☆ Mark Favourite");
             } catch (SQLException ex) {
                 Dialogs.error("Save Error", "Could not update favourite state.", ex);
             }
         });
 
+        // --- 2. ACTION BUTTONS ---
         Button saveAnnotationButton = new Button("Save Annotation");
         saveAnnotationButton.setOnAction(e -> saveAnnotation());
         saveAnnotationButton.getStyleClass().add("success-button");
+
+        // Now an exact match to the save button
+        toggleOverlayButton.getStyleClass().add("success-button");
+        toggleOverlayButton.setOnAction(e -> {
+            isAnnotationHidden = !isAnnotationHidden; // Flip the state
+            if (isAnnotationHidden) {
+                toggleOverlayButton.setText("Show Annotation");
+                overlayBox.setVisible(false);
+            } else {
+                toggleOverlayButton.setText("Hide Annotation");
+                if (!annotationArea.getText().isBlank()) {
+                    overlayBox.setVisible(true); 
+                }
+            }
+        });
 
         Button openLocationButton = new Button("Open File Location");
         openLocationButton.setOnAction(e -> openFileLocation());
@@ -147,16 +202,39 @@ public class RepositoryPane extends BorderPane {
         deleteButton.getStyleClass().add("danger-button");
         deleteButton.setOnAction(e -> deleteSelected());
 
+        Button shareButton = new Button("Share Photo");
+        shareButton.getStyleClass().add("primary-button");
+        shareButton.setOnAction(e -> {
+            if (context.getSelectedPhoto() == null) {
+                Dialogs.warn("No Selection", "Please select a photo to share first.");
+                return;
+            }
+            context.activeTabProperty().set(6); 
+        });
+
+        // --- 3. REARRANGE LAYOUT ROWS ---
+        
+        // Top Action Bar: Favourite Toggle is now on the left of Share
+        HBox quickActionBar = new HBox(10, favouriteToggleButton, shareButton, openLocationButton, deleteButton);
+        quickActionBar.setAlignment(Pos.CENTER_LEFT);
+        quickActionBar.setPadding(new Insets(0, 0, 8, 0));
+
+        // Annotation Action Bar: Save and Hide Overlay are now side-by-side
+        HBox annotationActions = new HBox(10, saveAnnotationButton, toggleOverlayButton);
+        annotationActions.setAlignment(Pos.CENTER_LEFT);
+
+        // Update Metadata Box (Removed favouriteCheckBox, added annotationActions)
         VBox metadataBox = new VBox(8,
                 labelledLine("Name", nameValue),
                 labelledLine("Path", pathValue),
                 labelledLine("Imported", importedAtValue),
-                favouriteCheckBox,
                 new Label("Annotation"),
                 annotationArea,
-                new HBox(10, saveAnnotationButton, openLocationButton, deleteButton)
+                lastModifiedLabel,
+                annotationActions // The new HBox containing Save and Toggle
         );
-        detailsPanel.getChildren().addAll(previewBox, metadataBox);
+
+        detailsPanel.getChildren().addAll(quickActionBar, previewBox, metadataBox);
 
         ScrollPane detailsScroll = new ScrollPane(detailsPanel);
         detailsScroll.setFitToWidth(true);
@@ -322,7 +400,16 @@ public class RepositoryPane extends BorderPane {
                 pathValue.setText("—");
                 importedAtValue.setText("—");
                 annotationArea.clear();
-                favouriteCheckBox.setSelected(false);
+                
+                favouriteToggleButton.setSelected(false);
+                favouriteToggleButton.setText("☆ Mark Favourite");
+                
+                // Reset annotation hide state
+                isAnnotationHidden = false;
+                toggleOverlayButton.setText("Hide Annotation");
+                overlayBox.setVisible(false);
+                
+                lastModifiedLabel.setText("Last Modified: —");
                 return;
             }
             previewImageView.setImage(new Image(Path.of(photo.getFilePath()).toUri().toString(), 0, 720, true, true, true));
@@ -330,12 +417,21 @@ public class RepositoryPane extends BorderPane {
             pathValue.setText(photo.getFilePath());
             importedAtValue.setText(photo.getImportedAt());
             annotationArea.setText(photo.getAnnotation());
-            favouriteCheckBox.setSelected(photo.isFavorite());
+            
+            // Updated to use the new toggle button
+            favouriteToggleButton.setSelected(photo.isFavorite());
+            favouriteToggleButton.setText(photo.isFavorite() ? "★ Favourited" : "☆ Mark Favourite");
+            
+            isAnnotationHidden = false;
+            toggleOverlayButton.setText("Hide Annotation");
+            
+            updateOverlayAndTags(photo.getAnnotation());
+            lastModifiedLabel.setText("Last Modified: (No recent changes)");
+            
         } finally {
             loadingDetails = false;
         }
     }
-
     private void saveAnnotation() {
         PhotoItem selected = context.getSelectedPhoto();
         if (selected == null) {
@@ -346,6 +442,11 @@ public class RepositoryPane extends BorderPane {
             selected.setAnnotation(annotationArea.getText());
             context.getLibraryService().updateAnnotation(selected);
             rebuildTiles();
+
+            updateOverlayAndTags(annotationArea.getText());
+            String timeStamp = LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss"));
+            lastModifiedLabel.setText("Last Modified: " + timeStamp);
+
             Dialogs.info("Saved", "Annotation saved for the selected image.");
         } catch (SQLException ex) {
             Dialogs.error("Save Error", "Could not save the annotation.", ex);
@@ -388,6 +489,45 @@ public class RepositoryPane extends BorderPane {
             rebuildTiles();
         } catch (Exception ex) {
             Dialogs.error("Delete Error", "Could not delete the selected image.", ex);
+        }
+
+        
+    }
+
+    private void updateOverlayAndTags(String text) {
+        if (text == null || text.isBlank()) {
+            overlayBox.setVisible(false);
+            return;
+        }
+        if (!isAnnotationHidden) {
+            overlayBox.setVisible(true); 
+        } else {
+            overlayBox.setVisible(false);
+        }
+        
+        overlayBox.setVisible(true);
+
+        // Extract tags using Regex (# followed by words/numbers)
+        String cleanText = text;
+        List<String> tags = new ArrayList<>();
+        Matcher m = Pattern.compile("#(\\w+)").matcher(text);
+        while (m.find()) {
+            tags.add(m.group(1));
+            // Remove the tag from the main display text for a cleaner look
+            cleanText = cleanText.replace(m.group(), "").trim(); 
+        }
+
+        annotationOverlayLabel.setText(cleanText);
+
+        // Clear old tags and generate new Pill Badges
+        tagsPane.getChildren().clear();
+        for (String tag : tags) {
+            Label tagLabel = new Label("#" + tag);
+            // High-concept "Pill Badge" styling (rounded corners, bold color)
+            tagLabel.setStyle("-fx-background-color: #3b82f6; -fx-text-fill: white; " +
+                              "-fx-padding: 4px 12px; -fx-background-radius: 15px; " +
+                              "-fx-font-size: 12px; -fx-font-weight: bold;");
+            tagsPane.getChildren().add(tagLabel);
         }
     }
 }

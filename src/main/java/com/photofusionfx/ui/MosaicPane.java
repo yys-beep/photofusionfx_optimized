@@ -132,7 +132,7 @@ public class MosaicPane extends BorderPane {
         exportButton.setOnAction(e -> exportMosaic());
         exportButton.getStyleClass().add("success-button");
 
-        Button saveToLibraryButton = new Button("Save Mosaic into Library");
+        Button saveToLibraryButton = new Button("Save to Repository");
         saveToLibraryButton.setMaxWidth(Double.MAX_VALUE);
         saveToLibraryButton.setOnAction(e -> saveMosaicIntoLibrary());
         saveToLibraryButton.getStyleClass().add("success-button");
