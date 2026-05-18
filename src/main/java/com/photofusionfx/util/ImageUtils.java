@@ -20,8 +20,16 @@ import java.io.File;
 import java.io.IOException;
 import java.util.Iterator;
 import java.util.Locale;
+import javax.imageio.spi.IIORegistry;
+import javax.imageio.spi.ImageReaderSpi;
 
 public final class ImageUtils {
+
+    static {
+    // Ensure ImageIO plugins (like webp-imageio) are registered
+    ImageIO.scanForPlugins();
+    }
+
     private ImageUtils() {
     }
 
@@ -71,12 +79,18 @@ public final class ImageUtils {
         return SwingFXUtils.fromFXImage(image, null);
     }
 
-    public static BufferedImage read(File file) throws IOException {
-        BufferedImage image = ImageIO.read(file);
+public static BufferedImage read(File file) throws Exception {
+        BufferedImage image = javax.imageio.ImageIO.read(file);
+        
         if (image == null) {
-            throw new IOException("Unsupported image file: " + file.getAbsolutePath());
+            javafx.scene.image.Image fxImage = new javafx.scene.image.Image(file.toURI().toString());
+            if (fxImage.isError()) {
+                throw new Exception("Unsupported image format or corrupt file: " + file.getName());
+            }
+            image = javafx.embed.swing.SwingFXUtils.fromFXImage(fxImage, null);
         }
-        return deepCopyToArgb(image);
+        
+        return image;
     }
 
     public static void write(BufferedImage image, File file) throws IOException {
