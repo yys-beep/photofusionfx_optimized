@@ -31,6 +31,8 @@ import java.awt.image.BufferedImage;
 import java.io.File;
 import java.nio.file.Path;
 import java.util.List;
+import javafx.scene.layout.Region;
+import javafx.scene.control.ListView;
 
 public class EditorPane extends BorderPane {
     private final AppContext context;
@@ -311,10 +313,8 @@ public class EditorPane extends BorderPane {
         Button backButton = new Button("Send Back");
         backButton.setOnAction(e -> moveSelectedLayer(-1));
 
-        VBox controls = new VBox(10,
-                new Label("Asset Library (Drag to Canvas)"),
-                assetGallery,
-                new Separator(),
+VBox controls = new VBox(10,
+                // 1. SELECTED LAYER PROPERTIES
                 new Label("Selected Layer Properties"),
                 labelledControl("Text", textField),
                 labelledControl("Font", fontFamilyBox),
@@ -326,9 +326,18 @@ public class EditorPane extends BorderPane {
                 new HBox(10, layerVisibleCheck, lockLayerAspectCheck),
                 new HBox(10, addTextButton, applyLayerButton), 
                 new Separator(),
+
+                // 2. ADD NEW LAYER
                 new Label("Add New Layer:"),
                 new HBox(5, addAssetButton, pasteLayerButton), 
                 new Separator(),
+
+                // 3. ASSET LIBRARY
+                new Label("Asset Library (Drag to Canvas)"),
+                assetGallery,
+                new Separator(),
+
+                // 4. LAYER STACK
                 new Label("Layer Stack"),
                 layerList,
                 new HBox(5, frontButton, backButton, deleteLayerButton, clearLayersButton)

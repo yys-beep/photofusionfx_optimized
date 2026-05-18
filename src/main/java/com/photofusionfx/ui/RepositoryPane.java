@@ -3,6 +3,7 @@ package com.photofusionfx.ui;
 import com.photofusionfx.AppContext;
 import com.photofusionfx.model.PhotoItem;
 import com.photofusionfx.util.Dialogs;
+import javafx.application.Platform;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
 import javafx.scene.control.Alert;
@@ -12,6 +13,7 @@ import javafx.scene.control.CheckBox;
 import javafx.scene.control.ComboBox;
 import javafx.scene.control.Label;
 import javafx.scene.control.ScrollPane;
+import javafx.scene.control.SplitPane;
 import javafx.scene.control.TextArea;
 import javafx.scene.control.TextField;
 import javafx.scene.image.Image;
@@ -20,7 +22,6 @@ import javafx.scene.layout.BorderPane;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.Priority;
 import javafx.scene.layout.Region;
-import javafx.scene.control.SplitPane;
 import javafx.scene.layout.StackPane;
 import javafx.scene.layout.TilePane;
 import javafx.scene.layout.VBox;
@@ -95,6 +96,9 @@ public class RepositoryPane extends BorderPane {
     }
 
     private SplitPane buildContent() {
+        // Right details panel default width at startup (user can resize by dragging divider)
+        final double DETAILS_DEFAULT_WIDTH = 500;
+
         tilePane.setHgap(12);
         tilePane.setVgap(12);
         tilePane.setPrefColumns(3);
@@ -107,9 +111,11 @@ public class RepositoryPane extends BorderPane {
 
         VBox detailsPanel = new VBox(12);
         detailsPanel.setPadding(new Insets(8, 4, 8, 16));
+
         previewImageView.setPreserveRatio(true);
         previewImageView.setFitWidth(760);
         previewImageView.setFitHeight(480);
+
         StackPane previewBox = new StackPane(previewImageView);
         previewBox.getStyleClass().add("preview-box");
         previewBox.setMinHeight(500);
@@ -152,20 +158,31 @@ public class RepositoryPane extends BorderPane {
         );
         detailsPanel.getChildren().addAll(previewBox, metadataBox);
 
-        // --- NEW CODE START ---
-        
-        // Wrap the details panel in a ScrollPane
         ScrollPane detailsScroll = new ScrollPane(detailsPanel);
-        detailsScroll.setFitToWidth(true); // Ensures it stretches to fill the space
-        detailsScroll.setHbarPolicy(ScrollPane.ScrollBarPolicy.NEVER); // Hide horizontal scrollbar
-        detailsScroll.setStyle("-fx-background-color: transparent;"); // Keeps your original design/colors
-        
-        // Pass the detailsScroll into the SplitPane instead of the raw detailsPanel
-        SplitPane splitPane = new SplitPane(libraryScroll, detailsScroll); 
-        
-        // --- NEW CODE END ---
+        detailsScroll.setFitToWidth(true);
+        detailsScroll.setHbarPolicy(ScrollPane.ScrollBarPolicy.NEVER);
+        detailsScroll.setStyle("-fx-background-color: transparent;");
 
-        splitPane.setDividerPositions(0.42);
+        // Default width at startup, but resizable
+        detailsScroll.setPrefWidth(DETAILS_DEFAULT_WIDTH);
+        detailsScroll.setMinWidth(320);
+        detailsScroll.setMaxWidth(Double.MAX_VALUE);
+
+        SplitPane splitPane = new SplitPane(libraryScroll, detailsScroll);
+
+        // IMPORTANT:
+        // Use Platform.runLater so SplitPane has a real width. Then set divider once to make
+        // the right panel start at ~DETAILS_DEFAULT_WIDTH pixels, while still allowing user resizing.
+        Platform.runLater(() -> {
+            double totalW = splitPane.getWidth();
+            if (totalW <= 0) {
+                return;
+            }
+            double pos = (totalW - DETAILS_DEFAULT_WIDTH) / totalW;
+            pos = Math.max(0.05, Math.min(0.95, pos));
+            splitPane.setDividerPositions(pos);
+        });
+
         return splitPane;
     }
 
@@ -173,14 +190,15 @@ public class RepositoryPane extends BorderPane {
         Label title = new Label(key);
         title.getStyleClass().add("field-title");
         value.setWrapText(true);
-        VBox box = new VBox(4, title, value);
-        return box;
+        return new VBox(4, title, value);
     }
 
     private void importImages() {
         FileChooser chooser = new FileChooser();
         chooser.setTitle("Import Images");
-        chooser.getExtensionFilters().add(new FileChooser.ExtensionFilter("Image Files", "*.png", "*.jpg", "*.jpeg", "*.bmp", "*.gif", "*.webp"));
+        chooser.getExtensionFilters().add(new FileChooser.ExtensionFilter(
+                "Image Files", "*.png", "*.jpg", "*.jpeg", "*.bmp", "*.gif", "*.webp"
+        ));
         List<File> selected = chooser.showOpenMultipleDialog(getScene().getWindow());
         if (selected == null || selected.isEmpty()) {
             return;
@@ -218,9 +236,7 @@ public class RepositoryPane extends BorderPane {
             context.loadInitialLibrary();
             if (selectedPath != null) {
                 Optional<PhotoItem> match = context.findByPath(selectedPath);
-                if (match.isPresent()) {
-                    context.setSelectedPhoto(match.get());
-                }
+                match.ifPresent(photoItem -> context.setSelectedPhoto(photoItem));
             }
             rebuildTiles();
         } catch (Exception ex) {
@@ -242,12 +258,14 @@ public class RepositoryPane extends BorderPane {
     }
 
     private boolean matchesSearchAndFilter(PhotoItem photo, String search, String filter) {
-        boolean matchesSearch = search.isBlank() ||
-                photo.getName().toLowerCase(Locale.ROOT).contains(search) ||
-                photo.getAnnotation().toLowerCase(Locale.ROOT).contains(search);
+        boolean matchesSearch = search.isBlank()
+                || photo.getName().toLowerCase(Locale.ROOT).contains(search)
+                || photo.getAnnotation().toLowerCase(Locale.ROOT).contains(search);
+
         if (!matchesSearch) {
             return false;
         }
+
         return switch (filter) {
             case "Annotated" -> photo.hasAnnotation();
             case "Favourites" -> photo.isFavorite();
@@ -280,9 +298,8 @@ public class RepositoryPane extends BorderPane {
         caption.getStyleClass().add("thumbnail-caption");
         caption.setWrapText(true);
 
-
-caption.setCursor(javafx.scene.Cursor.HAND);
-caption.setTooltip(new javafx.scene.control.Tooltip("Double-click to rename"));     
+        caption.setCursor(javafx.scene.Cursor.HAND);
+        caption.setTooltip(new javafx.scene.control.Tooltip("Double-click to rename"));
 
         VBox cardContent = new VBox(8, new StackPane(imageBox, heart, star), caption);
         cardContent.setPadding(new Insets(10));

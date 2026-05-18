@@ -93,8 +93,12 @@ public class LayerRenderService {
             if (layer.getSourcePath() != null && !layer.getSourcePath().isBlank()) {
                 File file = new File(layer.getSourcePath());
                 if (file.isFile()) {
-                    BufferedImage image = ImageUtils.read(file);
-                    g.drawImage(image, (int) Math.round(x), (int) Math.round(y), (int) Math.round(w), (int) Math.round(h), null);
+                    try {
+                        BufferedImage image = ImageUtils.read(file);
+                        g.drawImage(image, (int) Math.round(x), (int) Math.round(y), (int) Math.round(w), (int) Math.round(h), null);
+                    } catch (Exception e) {
+                        System.err.println("Skipping image layer: " + e.getMessage());
+                    }
                 }
             }
         } else if (layer.getType() == LayerType.RECTANGLE) {
