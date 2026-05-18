@@ -22,6 +22,7 @@ com\photofusionfx\ui\AssetLibraryPane$1.class
 com\photofusionfx\service\AppPaths.class
 com\photofusionfx\model\EditParameters.class
 com\photofusionfx\model\EmailConfig.class
+com\photofusionfx\service\MosaicService$PlacementMode.class
 com\photofusionfx\ui\VideoPane$3.class
 com\photofusionfx\ui\VideoPane.class
 com\photofusionfx\ui\MosaicPane$1.class
