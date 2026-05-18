@@ -3,7 +3,7 @@ package com.photofusionfx.ui;
 import com.photofusionfx.AppContext;
 import com.photofusionfx.model.AssetItem;
 import com.photofusionfx.service.AppPaths;
-import com.photofusionfx.util.Dialogs;
+import com.photofusionfx.util.Dialogs;   
 import com.photofusionfx.util.FileUtils;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;

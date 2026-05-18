@@ -1,5 +1,7 @@
 package com.photofusionfx.ui;
 
+//VideoPane supports text, shape and image layers draggable over video preview
+
 import com.photofusionfx.AppContext;
 import com.photofusionfx.model.LayerType;
 import com.photofusionfx.model.PhotoItem;
