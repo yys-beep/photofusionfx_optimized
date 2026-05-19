@@ -1,4 +1,4 @@
-// Module 3: JCodec video rendering pipeline
+// Module 3: JCodec video rendering pipeline.
 package com.photofusionfx.service;
 
 import com.photofusionfx.model.PhotoItem;
