@@ -1,4 +1,4 @@
-// Module 3: Magic Wand object extraction logic.
+// Module 3: Magic Wand object extraction logic.   
 package com.photofusionfx.service;
 
 import com.photofusionfx.util.ImageUtils;
