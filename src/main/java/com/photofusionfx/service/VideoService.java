@@ -22,14 +22,13 @@ import java.util.List;
 import java.util.function.Consumer;
 
 public class VideoService {
-
     public void renderVideo(List<PhotoItem> sequence,
                             String overlayText,
                             int secondsPerImage,
                             int fps,
                             int outputWidth,
                             File outputFile,
-                            Consumer<Double> progressConsumer) throws IOException {
+                            Consumer<Double> progressConsumer) throws Exception {
         renderVideo(sequence, overlayText, secondsPerImage, fps, outputWidth, outputFile, List.of(), 1280, 720, progressConsumer);
     }
 
@@ -42,118 +41,50 @@ public class VideoService {
                             List<ProjectLayer> graphicalLayers,
                             int layerReferenceWidth,
                             int layerReferenceHeight,
-                            Consumer<Double> progressConsumer) throws IOException {
+                            Consumer<Double> progressConsumer) throws Exception {
         if (sequence == null || sequence.isEmpty()) {
             throw new IllegalArgumentException("Select at least one image for video generation.");
         }
         fps = Math.max(12, fps);
         secondsPerImage = Math.max(1, secondsPerImage);
-
         int width = makeEven(Math.max(640, outputWidth));
         int height = makeEven((int) Math.round(width * 9.0 / 16.0));
-
         int displayFrames = secondsPerImage * fps;
         int transitionFrames = sequence.size() > 1 ? Math.max(1, Math.min(fps / 2, displayFrames / 3)) : 0;
         int holdFrames = Math.max(1, displayFrames - transitionFrames);
         int totalFrames = sequence.size() * displayFrames - transitionFrames * (sequence.size() - 1);
 
-        final AWTSequenceEncoder encoder;
-        try {
-            // Some jcodec versions declare checked Exception here
-            encoder = AWTSequenceEncoder.createSequenceEncoder(outputFile, fps);
-        } catch (Exception ex) {
-            throw new IOException("Failed to start video encoder.", ex);
-        }
-
+        AWTSequenceEncoder encoder = AWTSequenceEncoder.createSequenceEncoder(outputFile, fps);
         int frameIndex = 0;
         try {
             for (int i = 0; i < sequence.size(); i++) {
-
-                // IMPORTANT: do not inline ImageUtils.read(...) in renderStyledFrame(...),
-                // because ImageUtils.read throws checked IOException and some builds report it as Exception.
-                BufferedImage currentSource = safeReadImage(new File(sequence.get(i).getFilePath()));
-                BufferedImage current = renderStyledFrame(
-                        currentSource,
-                        width,
-                        height,
-                        overlayText,
-                        i,
-                        sequence.size(),
-                        graphicalLayers,
-                        layerReferenceWidth,
-                        layerReferenceHeight
-                );
+                BufferedImage current = renderStyledFrame(ImageUtils.read(new File(sequence.get(i).getFilePath())), width, height, overlayText, i, sequence.size(), graphicalLayers, layerReferenceWidth, layerReferenceHeight);
                 current = ImageUtils.ensureEvenDimensions(current);
-
                 if (i < sequence.size() - 1) {
-                    BufferedImage nextSource = safeReadImage(new File(sequence.get(i + 1).getFilePath()));
-                    BufferedImage next = renderStyledFrame(
-                            nextSource,
-                            width,
-                            height,
-                            overlayText,
-                            i + 1,
-                            sequence.size(),
-                            graphicalLayers,
-                            layerReferenceWidth,
-                            layerReferenceHeight
-                    );
+                    BufferedImage next = renderStyledFrame(ImageUtils.read(new File(sequence.get(i + 1).getFilePath())), width, height, overlayText, i + 1, sequence.size(), graphicalLayers, layerReferenceWidth, layerReferenceHeight);
                     next = ImageUtils.ensureEvenDimensions(next);
-
                     for (int f = 0; f < holdFrames; f++) {
-                        encodeFrame(encoder, current);
+                        encoder.encodeImage(current);
                         frameIndex++;
                         notifyProgress(progressConsumer, frameIndex, totalFrames);
                     }
-
                     for (int t = 0; t < transitionFrames; t++) {
                         float alpha = (t + 1f) / transitionFrames;
                         BufferedImage blended = blend(current, next, alpha);
-                        encodeFrame(encoder, blended);
+                        encoder.encodeImage(blended);
                         frameIndex++;
                         notifyProgress(progressConsumer, frameIndex, totalFrames);
                     }
                 } else {
                     for (int f = 0; f < displayFrames; f++) {
-                        encodeFrame(encoder, current);
+                        encoder.encodeImage(current);
                         frameIndex++;
                         notifyProgress(progressConsumer, frameIndex, totalFrames);
                     }
                 }
             }
         } finally {
-            try {
-                // Some jcodec versions declare checked Exception here
-                encoder.finish();
-            } catch (Exception ex) {
-                throw new IOException("Failed to finalize video file.", ex);
-            }
-        }
-    }
-
-    /**
-     * Wrap ImageUtils.read(...) so any unexpected checked Exception signature differences
-     * don't break compilation.
-     */
-    private BufferedImage safeReadImage(File file) throws IOException {
-        try {
-            return ImageUtils.read(file);
-        } catch (IOException io) {
-            throw io;
-        } catch (Exception ex) {
-            throw new IOException("Failed to read image: " + file.getAbsolutePath(), ex);
-        }
-    }
-
-    /**
-     * JCodec AWTSequenceEncoder.encodeImage(...) is declared as throwing checked Exception in many versions.
-     * Convert it into IOException so our public API remains "throws IOException".
-     */
-    private void encodeFrame(AWTSequenceEncoder encoder, BufferedImage frame) throws IOException {
-        try {
-            encoder.encodeImage(frame);
-        } catch (Exception ex) {
-            throw new IOException("Failed to encode video frame.", ex);
+            encoder.finish();
         }
     }
 
@@ -181,14 +112,11 @@ public class VideoService {
         g.setColor(Color.BLACK);
         g.fillRect(0, 0, width, height);
         drawCoverBackground(g, source, width, height);
-
         g.setComposite(AlphaComposite.getInstance(AlphaComposite.SRC_OVER, 0.38f));
         g.setColor(new Color(8, 12, 20));
         g.fillRect(0, 0, width, height);
         g.setComposite(AlphaComposite.SrcOver);
-
         drawContainedImage(g, source, width, height);
-        drawDecorativeChrome(g, width, height, overlayText, index, total);
         drawGraphicalLayers(g, graphicalLayers, width, height, layerReferenceWidth, layerReferenceHeight);
 
         g.dispose();
@@ -214,18 +142,19 @@ public class VideoService {
         g.setColor(new Color(0, 0, 0, 70));
         g.fillRoundRect(x - 10, y - 10, drawWidth + 20, drawHeight + 20, 20, 20);
         g.drawImage(source, x, y, drawWidth, drawHeight, null);
-
         g.setColor(new Color(255, 255, 255, 55));
         g.setStroke(new BasicStroke(2f));
         g.drawRoundRect(x - 1, y - 1, drawWidth + 2, drawHeight + 2, 14, 14);
     }
 
     private void drawDecorativeChrome(Graphics2D g, int width, int height, String overlayText, int index, int total) {
+        if (overlayText == null || overlayText.isBlank()) {
+            return; 
+        }        
         int panelX = Math.max(24, width / 28);
         int panelW = width - panelX * 2;
         int panelH = Math.max(86, height / 7);
         int panelY = height - panelH - Math.max(24, height / 24);
-
         g.setColor(new Color(5, 10, 18, 165));
         g.fill(new RoundRectangle2D.Double(panelX, panelY, panelW, panelH, 20, 20));
         g.setColor(new Color(255, 255, 255, 52));
@@ -236,7 +165,6 @@ public class VideoService {
         g.setFont(new Font("SansSerif", Font.BOLD, Math.max(22, width / 48)));
         String title = overlayText == null || overlayText.isBlank() ? "Favourite Photo Montage" : overlayText.strip();
         List<String> lines = wrapText(g, title, panelW - 48);
-
         int textY = panelY + Math.max(34, panelH / 3);
         for (int i = 0; i < Math.min(3, lines.size()); i++) {
             g.drawString(lines.get(i), panelX + 24, textY + i * Math.max(24, width / 56));
@@ -245,14 +173,13 @@ public class VideoService {
         int barX = panelX + 24;
         int barY = panelY + panelH - 20;
         int barW = panelW - 48;
-
         g.setColor(new Color(255, 255, 255, 45));
         g.fillRoundRect(barX, barY, barW, 6, 6, 6);
         g.setPaint(new GradientPaint(barX, 0, new Color(255, 255, 255, 220), barX + barW, 0, new Color(130, 180, 255, 210)));
-
         int filledW = Math.max(12, (int) Math.round(barW * ((index + 1) / (double) total)));
         g.fillRoundRect(barX, barY, filledW, 6, 6, 6);
     }
+
 
     private void drawGraphicalLayers(Graphics2D g,
                                      List<ProjectLayer> graphicalLayers,

@@ -45,6 +45,15 @@ import java.util.List;
 import javafx.application.Platform;
 import javafx.scene.SnapshotParameters;
 import javafx.scene.image.WritableImage;
+import javafx.geometry.Orientation;
+import javafx.scene.image.Image;
+import javafx.scene.image.ImageView;
+import javafx.scene.control.TabPane;
+import javafx.scene.control.Tab;
+import javafx.geometry.Orientation;
+import javafx.scene.image.Image;
+import javafx.scene.image.ImageView;
+import javafx.scene.control.SplitPane;
 
 /**
  * VideoPane — fully reworked layout with graphical layer editing support.
@@ -72,12 +81,10 @@ public class VideoPane extends BorderPane {
     private final ListView<PhotoItem> sequenceList   = new ListView<>(sequenceItems);
     private final ComboBox<String>    photoFilterBox = new ComboBox<>();
 
-    // ── Overlay text ─────────────────────────────────────────────────────────
-    private final TextArea overlayTextArea = new TextArea();
-
     // ── Video layer canvas & controls ────────────────────────────────────────
     private static final int VIDEO_LAYER_REFERENCE_WIDTH  = 1280;
     private static final int VIDEO_LAYER_REFERENCE_HEIGHT = 720;
+    private TabPane centerTabPane;
 
     private final ObservableList<ProjectLayer> videoLayers    = FXCollections.observableArrayList();
     private final ListView<ProjectLayer>        videoLayerList = new ListView<>(videoLayers);
@@ -86,7 +93,7 @@ public class VideoPane extends BorderPane {
     private final Label      layerPreviewZoomLabel  = new Label("100%");
     private final TextField  videoLayerTextField    = new TextField("Video text");
     private final ComboBox<String> videoFontFamilyBox   = new ComboBox<>();
-    private final Slider     videoFontSizeSlider    = new Slider(10, 160, 54);
+    private final Slider     videoFontSizeSlider    = new Slider(10, 800, 54);
     private final ColorPicker videoLayerFillPicker  = new ColorPicker(Color.WHITE);
     private final ColorPicker videoLayerStrokePicker= new ColorPicker(Color.BLACK);
     private final Slider     videoLayerStrokeSlider = new Slider(0, 20, 0);
@@ -138,10 +145,7 @@ public class VideoPane extends BorderPane {
 
     // near other fields
     private WritableImage currentVideoFrame = null;
-
-    // ═════════════════════════════════════════════════════════════════════════
-    // Constructor
-    // ═════════════════════════════════════════════════════════════════════════
+    
     public VideoPane(AppContext context) {
         this.context       = context;
         this.filteredPhotos = new FilteredList<>(context.getPhotoLibrary(), PhotoItem::isFavorite);
@@ -150,17 +154,62 @@ public class VideoPane extends BorderPane {
         initialiseSpinnersAndCombos();
         initialiseMediaButtons();
 
-        // Wrap everything in a ScrollPane so the window can always scroll down
-        ScrollPane outerScroll = new ScrollPane(buildMainLayout());
-        outerScroll.setFitToWidth(true);
-        outerScroll.setHbarPolicy(ScrollPane.ScrollBarPolicy.NEVER);
-        outerScroll.setVbarPolicy(ScrollPane.ScrollBarPolicy.AS_NEEDED);
-        outerScroll.setStyle("-fx-background-color: transparent; -fx-border-color: transparent;");
+// 1. RIGHT SIDEBAR CONTAINER
+        VBox rightSidebar = new VBox();
+        rightSidebar.setPadding(new Insets(10));
+        
+        ScrollPane rightScroll = new ScrollPane(rightSidebar);
+        rightScroll.setFitToWidth(true);
+        rightScroll.setMinWidth(300);
+        rightScroll.setStyle("-fx-background-color: transparent;");
 
-        setCenter(outerScroll);
-        setPadding(new Insets(12));
+        // Define Sidebars content
+        VBox playerSidebar = new VBox(10, buildRenderSettingsSection(), buildLayerPropertiesPanel());
+        VBox editorSidebar = buildEditorSidebar(); 
+        
+        // Set default view to Editor (Add the whole box, not just its children)
+        rightSidebar.getChildren().add(editorSidebar); 
 
-        // Auto-populate if library already has favourites
+        // 2. CENTER AREA: Visuals
+        centerTabPane = new TabPane();
+        centerTabPane.setTabClosingPolicy(TabPane.TabClosingPolicy.UNAVAILABLE);
+        
+        Tab editorTab = new Tab("🖌 Layout Editor", buildVideoLayerEditor());
+        Tab playerTab = new Tab("▶ Video Player", buildPlayerSection());
+        centerTabPane.getTabs().addAll(editorTab, playerTab);
+        
+// --- FIXED: DYNAMIC SIDEBAR LISTENER ---
+        centerTabPane.getSelectionModel().selectedItemProperty().addListener((obs, oldTab, newTab) -> {
+            rightSidebar.getChildren().clear(); // Clear the current view
+            if (newTab == playerTab) {
+                rightSidebar.getChildren().add(playerSidebar); // Show player tools
+            } else {
+                rightSidebar.getChildren().add(editorSidebar); // Show editor tools
+                
+                // --- NEW FIX: Clear the leftover video frame and redraw the timeline image! ---
+                currentVideoFrame = null;
+                drawVideoLayerCanvas();
+            }
+        });
+
+        VBox centerContainer = new VBox(centerTabPane);
+        centerContainer.setPadding(new Insets(10, 15, 10, 15));
+        VBox.setVgrow(centerTabPane, Priority.ALWAYS);
+
+        // 3. BOTTOM AREA: Sequence Timeline
+        SplitPane bottomTimeline = buildSequenceSection();
+
+        SplitPane verticalSplit = new SplitPane(centerContainer, bottomTimeline);
+        verticalSplit.setOrientation(Orientation.VERTICAL);
+        verticalSplit.setDividerPositions(0.75); 
+
+        SplitPane mainSplit = new SplitPane(verticalSplit, rightScroll);
+        mainSplit.setOrientation(Orientation.HORIZONTAL);
+        mainSplit.setDividerPositions(0.75); 
+
+        setCenter(mainSplit);
+
+        // Auto-populate
         context.getPhotoLibrary().addListener(
             (javafx.collections.ListChangeListener<? super PhotoItem>) c -> {
                 if (sequenceItems.isEmpty() && !filteredPhotos.isEmpty()) loadAllFiltered();
@@ -170,315 +219,164 @@ public class VideoPane extends BorderPane {
         if (!filteredPhotos.isEmpty()) loadAllFiltered();
     }
 
-    // ═════════════════════════════════════════════════════════════════════════
-    // Top-level layout builder
-    // ═════════════════════════════════════════════════════════════════════════
-    private VBox buildMainLayout() {
-        VBox root = new VBox(14);
-        root.setPadding(new Insets(4, 8, 16, 8));
 
-        root.getChildren().addAll(
-            buildSequenceSection(),        // 1. Photo sequence management
-            buildRenderSettingsSection(),  // 2. Encode settings + action buttons
-            buildOverlayTextSection(),     // 3. Text overlay
-            buildLayerEditorSection(),     // 4. Draggable graphical layers
-            buildPlayerSection()           // 5. Preview player
-        );
-        return root;
-    }
 
-    // ─── Section 1: Sequence management ──────────────────────────────────────
-    private TitledPane buildSequenceSection() {
-        // Filter header
+// ─── Section 1: Sequence management (Horizontal Filmstrip) ──────────────
+    private SplitPane buildSequenceSection() {
+        // --- 1. NEW FILTER LOGIC ---
         Label filterLabel = new Label("Show:");
-        photoFilterBox.getItems().addAll("Favourite Photos", "All Photos");
+        photoFilterBox.getItems().setAll("Favourite Photos", "Annotated Photos", "All Photos");
         photoFilterBox.getSelectionModel().selectFirst();
         photoFilterBox.valueProperty().addListener((obs, old, val) ->
-            filteredPhotos.setPredicate("All Photos".equals(val) ? p -> true : PhotoItem::isFavorite));
+            filteredPhotos.setPredicate(p -> {
+                if ("All Photos".equals(val)) return true;
+                if ("Annotated Photos".equals(val)) return p.getAnnotation() != null && !p.getAnnotation().isBlank();
+                return p.isFavorite();
+            })
+        );
 
-        HBox filterRow = new HBox(8, filterLabel, photoFilterBox);
-        filterRow.setAlignment(Pos.CENTER_LEFT);
-
-        // Lists
         availableList.setItems(filteredPhotos);
         availableList.getSelectionModel().setSelectionMode(SelectionMode.MULTIPLE);
         sequenceList.getSelectionModel().setSelectionMode(SelectionMode.MULTIPLE);
-        availableList.setCellFactory(l -> simpleCell());
-        sequenceList.setCellFactory(l -> simpleCell());
-        availableList.setPrefHeight(180);
-        sequenceList.setPrefHeight(180);
+        
+        availableList.setOrientation(Orientation.HORIZONTAL);
+        sequenceList.setOrientation(Orientation.HORIZONTAL);
+        availableList.setCellFactory(l -> thumbnailCell());
+        sequenceList.setCellFactory(l -> thumbnailCell());
+        
+        // Shorter default heights
+        availableList.setPrefHeight(90);
+        sequenceList.setPrefHeight(90);
 
-        // Transfer buttons (centre column)
-        Button addBtn     = iconBtn("Add →",       () -> addSelectedToSequence());
-        Button removeBtn  = iconBtn("← Remove",    () -> removeSelectedFromSequence());
-        Button upBtn      = iconBtn("⬆ Up",        () -> moveSelected(-1));
-        Button downBtn    = iconBtn("⬇ Down",      () -> moveSelected(1));
-        Button loadAllBtn = iconBtn("Load All",    () -> loadAllFiltered());
-        Button clearBtn   = iconBtn("🗑 Clear",    () -> sequenceItems.clear());
+        Button addBtn     = iconBtn("⬇ Add to Timeline", () -> addSelectedToSequence());
+        Button loadAllBtn = iconBtn("⬇ Load All", () -> loadAllFiltered());
+        Button removeBtn  = iconBtn("⬆ Remove", () -> removeSelectedFromSequence());
+        Button upBtn      = iconBtn("◀ Move Left", () -> moveSelected(-1));
+        Button downBtn    = iconBtn("Move Right ▶", () -> moveSelected(1));
+        Button clearBtn   = iconBtn("🗑 Clear", () -> sequenceItems.clear());
 
-        VBox midButtons = new VBox(6, addBtn, removeBtn, new Separator(), upBtn, downBtn,
-                                   new Separator(), loadAllBtn, clearBtn);
-        midButtons.setAlignment(Pos.CENTER);
-        midButtons.setPadding(new Insets(0, 4, 0, 4));
+        Region spacer1 = new Region(); HBox.setHgrow(spacer1, Priority.ALWAYS);
+        Region spacer2 = new Region(); HBox.setHgrow(spacer2, Priority.ALWAYS);
 
-        VBox leftCol  = new VBox(6, new Label("📷  Available photos"), availableList);
-        VBox rightCol = new VBox(6, new Label("🎬  Video sequence (in order)"), sequenceList);
-        VBox.setVgrow(availableList, Priority.ALWAYS);
-        VBox.setVgrow(sequenceList,  Priority.ALWAYS);
-        HBox.setHgrow(leftCol,  Priority.ALWAYS);
-        HBox.setHgrow(rightCol, Priority.ALWAYS);
+        // --- 2. WRAP IN TITLED PANES FOR HIDING ---
+        HBox topControls = new HBox(10, spacer1, filterLabel, photoFilterBox, loadAllBtn, addBtn);
+        topControls.setAlignment(Pos.CENTER_RIGHT);
+        VBox topContent = new VBox(8, topControls, availableList);
+        topContent.setPadding(new Insets(5));
+        TitledPane availablePane = new TitledPane("📷 Available Photos", topContent);
 
-        HBox lists = new HBox(4, leftCol, midButtons, rightCol);
-        VBox content = new VBox(8, filterRow, lists);
-        content.setPadding(new Insets(10));
+        HBox bottomControls = new HBox(10, spacer2, upBtn, downBtn, removeBtn, clearBtn);
+        bottomControls.setAlignment(Pos.CENTER_RIGHT);
+        VBox bottomContent = new VBox(8, bottomControls, sequenceList);
+        bottomContent.setPadding(new Insets(5));
+        TitledPane sequencePane = new TitledPane("🎬 Video Sequence Timeline", bottomContent);
 
-        TitledPane tp = new TitledPane("📋  Photo Sequence", content);
-        tp.setExpanded(true);
-        return tp;
+        // --- 3. WRAP IN SPLIT PANE FOR RESIZING ---
+        SplitPane timelineSplit = new SplitPane(availablePane, sequencePane);
+        timelineSplit.setOrientation(Orientation.VERTICAL);
+        timelineSplit.setDividerPositions(0.5); // 50/50 split between the two timelines
+        
+        return timelineSplit;
     }
 
     // ─── Section 2: Render settings + action buttons ──────────────────────────
-    private TitledPane buildRenderSettingsSection() {
-        Label secsLabel = new Label("Seconds per image:");
-        Label fpsLabel  = new Label("Frame rate (FPS):");
-        Label resLabel  = new Label("Resolution:");
+private TitledPane buildRenderSettingsSection() {
+        GridPane grid = new GridPane();
+        grid.setHgap(10); grid.setVgap(10);
+        secondsSpinner.setPrefWidth(80);
+        fpsSpinner.setPrefWidth(80);
+        resolutionBox.setPrefWidth(160);
 
-        secondsSpinner.setPrefWidth(72);
-        fpsSpinner.setPrefWidth(72);
-        resolutionBox.setPrefWidth(190);
+        grid.add(new Label("Secs/image:"), 0, 0); grid.add(secondsSpinner, 1, 0);
+        grid.add(new Label("Frame rate:"), 0, 1); grid.add(fpsSpinner, 1, 1);
+        grid.add(new Label("Resolution:"), 0, 2); grid.add(resolutionBox, 0, 3, 2, 1);
 
-        HBox settingsRow = new HBox(12,
-            secsLabel, secondsSpinner,
-            fpsLabel,  fpsSpinner,
-            resLabel,  resolutionBox);
-        settingsRow.setAlignment(Pos.CENTER_LEFT);
-
-        // Progress + status
-        progressBar.setPrefWidth(220);
-        progressBar.setVisible(false);
         renderStatus.setStyle("-fx-text-fill: #64748b; -fx-font-size: 11px;");
 
-        HBox progressRow = new HBox(10, progressBar, renderStatus);
-        progressRow.setAlignment(Pos.CENTER_LEFT);
-
-        // Action buttons
         previewButton.getStyleClass().add("primary-button");
         exportButton.getStyleClass().add("success-button");
         exportButton.setDisable(true);
-
         previewButton.setOnAction(e -> generatePreview());
         exportButton.setOnAction(e -> exportVideo());
-        previewButton.setMinWidth(180);
-        exportButton.setMinWidth(140);
+        
+        previewButton.setMaxWidth(Double.MAX_VALUE);
+        exportButton.setMaxWidth(Double.MAX_VALUE);
+        
+        // Render status label is now right below the buttons!
+        VBox actionRow = new VBox(8, previewButton, exportButton, renderStatus); 
 
-        HBox actionRow = new HBox(10, previewButton, exportButton);
-        actionRow.setAlignment(Pos.CENTER_RIGHT);
-
-        Region spacer = new Region();
-        HBox.setHgrow(spacer, Priority.ALWAYS);
-        HBox bottomRow = new HBox(10, progressRow, spacer, actionRow);
-        bottomRow.setAlignment(Pos.CENTER);
-
-        VBox content = new VBox(10, settingsRow, bottomRow);
+        VBox content = new VBox(15, grid, actionRow);
         content.setPadding(new Insets(10));
-
-        TitledPane tp = new TitledPane("⚙  Render Settings", content);
+        
+        TitledPane tp = new TitledPane("⚙ Render Settings", content);
         tp.setExpanded(true);
         return tp;
     }
 
-    // ─── Section 3: Overlay text ──────────────────────────────────────────────
-    private TitledPane buildOverlayTextSection() {
-        overlayTextArea.setPromptText("Optional poem, title, or caption that appears on every video frame…");
-        overlayTextArea.setPrefRowCount(3);
-        overlayTextArea.setWrapText(true);
 
-        Label hint = new Label("This text is drawn at the bottom of each frame. Leave blank to use the default title.");
-        hint.setStyle("-fx-text-fill: #94a3b8; -fx-font-size: 11px;");
-        hint.setWrapText(true);
-
-        VBox content = new VBox(8, hint, overlayTextArea);
-        content.setPadding(new Insets(10));
-
-        TitledPane tp = new TitledPane("🔤  Overlay Text / Caption", content);
-        tp.setExpanded(false);
-        return tp;
-    }
-
-    // ─── Section 4: Draggable graphical layers ────────────────────────────────
-    private TitledPane buildLayerEditorSection() {
-        VBox content = buildVideoLayerEditor();
-        content.setPadding(new Insets(2));
-
-        TitledPane tp = new TitledPane("🖼  Graphical Layers  (drag to move)", content);
-        tp.setExpanded(false);
-        return tp;
-    }
-
-    // ─── Section 5: Preview player ────────────────────────────────────────────
-    private TitledPane buildPlayerSection() {
-        Label hint = new Label("Generate a preview first, then use the controls below to watch and export it.");
-        hint.setStyle("-fx-text-fill: #94a3b8; -fx-font-size: 11px;");
-        hint.setWrapText(true);
+// ─── Section 5: Preview player ────────────────────────────────────────────
+    private VBox buildPlayerSection() {
+        Label hint = new Label("💡 Generate a preview from the sidebar. When finished, use the controls below to review your video.");
+        hint.setStyle("-fx-text-fill: #64748b; -fx-font-size: 13px;");
 
         buildPlayerPane();
-        playerBox = new VBox(8, hint, playerPane);
+        playerBox = new VBox(12, hint, playerPane);
+        playerBox.setPadding(new Insets(15)); // Add padding so it looks great inside the Tab
         VBox.setVgrow(playerPane, Priority.ALWAYS);
 
         playerPane.setMinHeight(320);
-        playerPane.setPrefHeight(360);
-
-        TitledPane tp = new TitledPane("▶  Video Preview & Playback", playerBox);
-        tp.setExpanded(true);
-        return tp;
+        playerPane.setPrefHeight(380);
+        return playerBox;
     }
 
-    // ═════════════════════════════════════════════════════════════════════════
-    // Layer editor with properties panel
-    // ═════════════════════════════════════════════════════════════════════════
+// ─── Section 4: Draggable graphical layers (Canvas Only) ────────────────
     private VBox buildVideoLayerEditor() {
-        videoLayerTextField.setPromptText("Text for text layers…");
+        StackPane canvasContainer = new StackPane(videoLayerCanvas);
+        canvasContainer.getStyleClass().add("preview-box");
+        canvasContainer.setMinHeight(150); 
+        canvasContainer.setMinWidth(250);
 
-        // ── Add-layer buttons ──
-        Button addTextBtn    = iconBtn("＋ Text",      () -> addVideoTextLayer());
-        Button addRectBtn    = iconBtn("＋ Rectangle", () -> addVideoShapeLayer(LayerType.RECTANGLE));
-        Button addEllipseBtn = iconBtn("＋ Ellipse",   () -> addVideoShapeLayer(LayerType.ELLIPSE));
-        Button addAssetBtn   = iconBtn("＋ Image",     () -> addVideoImageLayerFromFile());
-        Button pasteBtn      = iconBtn("📋 Paste",     () -> pasteVideoClipboardLayer());
-        Button applyBtn      = iconBtn("✔ Apply",      () -> applyVideoLayerControls());
-        Button forwardBtn    = iconBtn("Forward",       () -> moveSelectedVideoLayer(1));
-        Button backwardBtn   = iconBtn("Backward",      () -> moveSelectedVideoLayer(-1));
-        Button deleteBtn     = iconBtn("🗑 Delete",    () -> deleteVideoLayer());
-        Button clearBtn      = iconBtn("✕ Clear All",  () -> videoLayers.clear());
-
-        // Canvas holder
-        Pane holder = new Pane(videoLayerCanvas);
-        holder.setMinHeight(360);
-        holder.setPrefHeight(540);
-        holder.setMinWidth(640);
-        holder.setPrefWidth(960);
-        holder.getStyleClass().add("preview-box");
-        videoLayerCanvas.widthProperty().bind(holder.widthProperty());
-        videoLayerCanvas.heightProperty().bind(holder.heightProperty());
+        videoLayerCanvas.widthProperty().bind(canvasContainer.widthProperty());
+        videoLayerCanvas.heightProperty().bind(canvasContainer.heightProperty());
         videoLayerCanvas.widthProperty().addListener((obs, ov, nv) -> drawVideoLayerCanvas());
         videoLayerCanvas.heightProperty().addListener((obs, ov, nv) -> drawVideoLayerCanvas());
 
-        layerPreviewZoomSlider.setShowTickLabels(true);
-        layerPreviewZoomSlider.setShowTickMarks(true);
-        layerPreviewZoomSlider.setMajorTickUnit(0.5);
-        layerPreviewZoomSlider.valueProperty().addListener((obs, ov, nv) -> {
-            double zoom = nv.doubleValue();
-            layerPreviewZoomLabel.setText(String.format("%d%%", Math.round(zoom * 100)));
-            holder.setPrefSize(960 * zoom, 540 * zoom);
-            drawVideoLayerCanvas();
-        });
-
-        ScrollPane canvasScroll = new ScrollPane(holder);
-        canvasScroll.setFitToWidth(false);
-        canvasScroll.setFitToHeight(false);
-        canvasScroll.setPannable(true);
-        canvasScroll.setPrefViewportWidth(960);
-        canvasScroll.setPrefViewportHeight(540);
-        canvasScroll.setMinHeight(560);
-        canvasScroll.setPrefHeight(560);
-        canvasScroll.setMaxWidth(Region.USE_PREF_SIZE);
-        canvasScroll.setHbarPolicy(ScrollPane.ScrollBarPolicy.AS_NEEDED);
-        canvasScroll.setVbarPolicy(ScrollPane.ScrollBarPolicy.AS_NEEDED);
-
-        HBox previewZoomRow = new HBox(8, styled("Preview zoom"), layerPreviewZoomSlider, layerPreviewZoomLabel);
-        previewZoomRow.setAlignment(Pos.CENTER_LEFT);
-        HBox.setHgrow(layerPreviewZoomSlider, Priority.ALWAYS);
-
-        // Style controls
-        Label sizeLabel    = styled("Size");
-        Label fillLabel    = styled("Fill");
-        Label strokeLabel  = styled("Stroke colour");
-        Label strokeW      = styled("Stroke width");
-        Label opacityLabel = styled("Opacity");
-
-        // Row 1: text & font
-        HBox row1 = new HBox(8,
-            styled("Text:"), videoLayerTextField,
-            styled("Font:"), videoFontFamilyBox);
-        HBox.setHgrow(videoLayerTextField, Priority.ALWAYS);
-
-        // Row 2: style sliders/pickers
-        HBox row2 = new HBox(8,
-            sizeLabel, videoFontSizeSlider,
-            fillLabel, videoLayerFillPicker,
-            strokeLabel, videoLayerStrokePicker,
-            strokeW, videoLayerStrokeSlider,
-            opacityLabel, videoLayerOpacitySlider);
-        HBox.setHgrow(videoFontSizeSlider,     Priority.SOMETIMES);
-        HBox.setHgrow(videoLayerStrokeSlider,  Priority.SOMETIMES);
-        HBox.setHgrow(videoLayerOpacitySlider, Priority.SOMETIMES);
-        row2.setAlignment(Pos.CENTER_LEFT);
-
-        // Row 3: action buttons
-        HBox row3 = new HBox(6,
-            addTextBtn, addRectBtn, addEllipseBtn, addAssetBtn,
-            pasteBtn, applyBtn, forwardBtn, backwardBtn, deleteBtn, clearBtn);
-        row3.setAlignment(Pos.CENTER_LEFT);
-        row3.setAlignment(Pos.CENTER_LEFT);
-
-        // Layer list
-        videoLayerList.setPrefHeight(110);
-        Label layerListLabel = new Label("Layer");
-        layerListLabel.getStyleClass().add("field-title");
-        VBox layerListBox = new VBox(4, layerListLabel, videoLayerList);
-
-        // ═══════════════════════════════════════════════════════════════════
-        // Layer Properties Panel
-        // ═══════════════════════════════════════════════════════════════════
-        VBox layerPropsPanel = buildLayerPropertiesPanel();
-
-        // Main box combining canvas + properties
-        VBox box = new VBox(8, 
-            row1, 
-            previewZoomRow,
-            canvasScroll,
-            layerListBox,
-            row2, 
-            row3,
-            new Separator(),
-            layerPropsPanel
-        );
-        box.getStyleClass().add("section-card");
+        VBox box = new VBox(canvasContainer);
+        VBox.setVgrow(canvasContainer, Priority.ALWAYS);
+        box.setPadding(new Insets(10));
+        
         drawVideoLayerCanvas();
         return box;
     }
 
-    // Build the layer properties panel
-    private VBox buildLayerPropertiesPanel() {
+// ─── Section 4: Layer Properties (Sidebar) ───────────────────────────────
+    private TitledPane buildLayerPropertiesPanel() {
         layerPropXSpinner.setEditable(true);
         layerPropYSpinner.setEditable(true);
         layerPropWSpinner.setEditable(true);
         layerPropHSpinner.setEditable(true);
-
         layerVisibilityCheck.setSelected(true);
 
-        // Listen for changes in spinners to update the layer
         layerPropXSpinner.valueProperty().addListener((obs, ov, nv) -> updateLayerFromProperties());
         layerPropYSpinner.valueProperty().addListener((obs, ov, nv) -> updateLayerFromProperties());
         layerPropWSpinner.valueProperty().addListener((obs, ov, nv) -> updateLayerFromProperties());
         layerPropHSpinner.valueProperty().addListener((obs, ov, nv) -> updateLayerFromProperties());
         layerVisibilityCheck.selectedProperty().addListener((obs, ov, nv) -> updateLayerFromProperties());
 
-        HBox posRow = new HBox(12,
-            styled("X:"), layerPropXSpinner,
-            styled("Y:"), layerPropYSpinner,
-            styled("Width:"), layerPropWSpinner,
-            styled("Height:"), layerPropHSpinner,
-            layerVisibilityCheck);
-        posRow.setAlignment(Pos.CENTER_LEFT);
+        GridPane grid = new GridPane();
+        grid.setHgap(10); grid.setVgap(10);
+        grid.add(new Label("X:"), 0, 0); grid.add(layerPropXSpinner, 1, 0);
+        grid.add(new Label("Y:"), 0, 1); grid.add(layerPropYSpinner, 1, 1);
+        grid.add(new Label("Width:"), 0, 2); grid.add(layerPropWSpinner, 1, 2);
+        grid.add(new Label("Height:"), 0, 3); grid.add(layerPropHSpinner, 1, 3);
+        grid.add(layerVisibilityCheck, 0, 4, 2, 1);
 
-        VBox propsBox = new VBox(8, 
-            new Label("Layer Properties:"),
-            posRow);
-        propsBox.setPadding(new Insets(10));
-        propsBox.setStyle("-fx-border-color: #d0d0d0; -fx-border-radius: 5;");
-
-        return propsBox;
+        VBox content = new VBox(10, grid);
+        content.setPadding(new Insets(10));
+        
+        TitledPane tp = new TitledPane("🛠 Layer Properties", content);
+        tp.setExpanded(true); 
+        return tp;
     }
 
     private void updateLayerFromProperties() {
@@ -523,9 +421,7 @@ public class VideoPane extends BorderPane {
         }
     }
 
-    // ═════════════════════════════════════════════════════════════════════════
-    // Player pane
-    // ═════════════════════════════════════════════════════════════════════════
+
     private void buildPlayerPane() {
         mediaView.setPreserveRatio(true);
 
@@ -555,39 +451,32 @@ public class VideoPane extends BorderPane {
         skipFwdButton.setOnAction(e -> skipTime(5));
         fullScrButton.setOnAction(e -> toggleFullScreen());
 
-        HBox controls = new HBox(8,
-            skipBackButton, playPauseButton, skipFwdButton,
-            seekSlider, timeLabel, fullScrButton);
+        // --- THIS IS THE HBOX THAT WAS MISSING ---
+        HBox controls = new HBox(8, skipBackButton, playPauseButton, skipFwdButton, seekSlider, timeLabel, fullScrButton);
         controls.setAlignment(Pos.CENTER_LEFT);
         HBox.setHgrow(seekSlider, Priority.ALWAYS);
         controls.setPadding(new Insets(10, 0, 0, 0));
+        // -----------------------------------------
 
-        // "No preview" placeholder
-        Label placeholder = new Label("No preview yet.\nClick  ▶  Generate Preview  above to render the video.");
+        Label placeholder = new Label("No preview yet.\nClick Generate Preview to render the video.");
         placeholder.setTextAlignment(TextAlignment.CENTER);
         placeholder.setStyle("-fx-text-fill: #94a3b8; -fx-font-size: 13px;");
-        placeholder.setWrapText(true);
 
         StackPane videoContainer = new StackPane(placeholder, mediaView);
-        videoContainer.setStyle("-fx-background-color: #0f172a; -fx-background-radius: 10;");
-        videoContainer.setMinHeight(240);
-        videoContainer.setPrefHeight(360);
+        // MATCHES CANVAS STYLING EXACTLY
+        videoContainer.getStyleClass().add("preview-box");
+        videoContainer.setMinHeight(150);
+        videoContainer.setMinWidth(250);
 
-        mediaView.visibleProperty().bind(
-            mediaView.mediaPlayerProperty().isNotNull());
-        placeholder.visibleProperty().bind(
-            mediaView.mediaPlayerProperty().isNull());
+        mediaView.visibleProperty().bind(mediaView.mediaPlayerProperty().isNotNull());
+        placeholder.visibleProperty().bind(mediaView.mediaPlayerProperty().isNull());
 
-        videoContainer.layoutBoundsProperty().addListener((obs, ov, nv) -> {
-            mediaView.setFitWidth(nv.getWidth());
-            mediaView.setFitHeight(nv.getHeight());
-        });
+        mediaView.fitWidthProperty().bind(videoContainer.widthProperty());
+        mediaView.fitHeightProperty().bind(videoContainer.heightProperty());
 
         playerPane = new BorderPane();
         playerPane.setCenter(videoContainer);
-        playerPane.setBottom(controls);
-        playerPane.setPadding(new Insets(12));
-        playerPane.getStyleClass().add("preview-box");
+        playerPane.setBottom(controls); // Now Java knows what 'controls' is!
     }
 
     // ═════════════════════════════════════════════════════════════════════════
@@ -678,7 +567,11 @@ public class VideoPane extends BorderPane {
                 if (layer != null) {
                     videoLayerTextField.setText(layer.getText() == null ? "" : layer.getText());
                     videoFontFamilyBox.getSelectionModel().select(layer.getFontFamily());
-                    videoFontSizeSlider.setValue(layer.getFontSize());
+                    if (layer.getType() == LayerType.TEXT) {
+                        videoFontSizeSlider.setValue(layer.getFontSize());
+                    } else {
+                        videoFontSizeSlider.setValue(layer.getWidth());
+                    }
                     videoLayerFillPicker.setValue(layer.getFillColor());
                     videoLayerStrokePicker.setValue(layer.getStrokeColor());
                     videoLayerStrokeSlider.setValue(layer.getStrokeWidth());
@@ -722,6 +615,8 @@ public class VideoPane extends BorderPane {
         videoLayerCanvas.setOnMouseReleased(event -> {
             draggedVideoLayer = null;
         });
+
+        sequenceList.getSelectionModel().selectedItemProperty().addListener((obs, old, val) -> drawVideoLayerCanvas());
     }
 
     // ═════════════════════════════════════════════════════════════════════════
@@ -820,12 +715,21 @@ public class VideoPane extends BorderPane {
     private void applyVideoLayerControls() {
         ProjectLayer layer = videoLayerList.getSelectionModel().getSelectedItem();
         if (layer == null) { Dialogs.warn("No Layer Selected", "Select a layer first."); return; }
+        
         if (layer.getType() == LayerType.TEXT) {
             layer.setText(videoLayerTextField.getText());
             layer.setFontFamily(videoFontFamilyBox.getValue());
             layer.setFontSize(videoFontSizeSlider.getValue());
             updateTextLayerBounds(layer);
+        } else {
+            // --- NEW: Scale shapes and images proportionally using the slider ---
+            double oldW = Math.max(1, layer.getWidth());
+            double newW = videoFontSizeSlider.getValue();
+            double ratio = layer.getHeight() / oldW;
+            layer.setWidth(newW);
+            layer.setHeight(newW * ratio);
         }
+        
         layer.setFillColor(videoLayerFillPicker.getValue());
         layer.setStrokeColor(videoLayerStrokePicker.getValue());
         layer.setStrokeWidth(videoLayerStrokeSlider.getValue());
@@ -900,11 +804,15 @@ public class VideoPane extends BorderPane {
             gc.drawImage(currentVideoFrame, videoLayerOffsetX, videoLayerOffsetY, drawW, drawH);
         } else if (!sequenceItems.isEmpty()) {
             try {
-                Image firstFrame = new Image(new File(sequenceItems.getFirst().getFilePath()).toURI().toString(), false);
-                double scale = Math.min(drawW / firstFrame.getWidth(), drawH / firstFrame.getHeight());
-                double imageW = firstFrame.getWidth() * scale;
-                double imageH = firstFrame.getHeight() * scale;
-                gc.drawImage(firstFrame,
+                // Get the image the user clicked, or fallback to the first one
+                PhotoItem selected = sequenceList.getSelectionModel().getSelectedItem();
+                if (selected == null) selected = sequenceItems.getFirst();
+                
+                Image previewFrame = new Image(new File(selected.getFilePath()).toURI().toString(), false);
+                double scale = Math.min(drawW / previewFrame.getWidth(), drawH / previewFrame.getHeight());
+                double imageW = previewFrame.getWidth() * scale;
+                double imageH = previewFrame.getHeight() * scale;
+                gc.drawImage(previewFrame,
                     videoLayerOffsetX + (drawW - imageW) / 2.0,
                     videoLayerOffsetY + (drawH - imageH) / 2.0,
                     imageW,
@@ -912,8 +820,6 @@ public class VideoPane extends BorderPane {
             } catch (Exception ex) {
                 drawEmptyVideoLayerPreview(gc, drawW, drawH);
             }
-        } else {
-            drawEmptyVideoLayerPreview(gc, drawW, drawH);
         }
 
         gc.setStroke(Color.rgb(148, 163, 184));
@@ -1100,7 +1006,7 @@ public class VideoPane extends BorderPane {
                 tmp.deleteOnExit();
                 context.getVideoService().renderVideo(
                     sequenceItems,
-                    overlayTextArea.getText(),
+                    "",
                     secondsSpinner.getValue(),
                     fpsSpinner.getValue(),
                     parsedWidth,
@@ -1123,6 +1029,11 @@ public class VideoPane extends BorderPane {
             loadMedia(tempPreviewFile);
             previewButton.setDisable(false);
             exportButton.setDisable(false);
+
+            if (centerTabPane != null) {
+                // Index 1 is the Video Player tab
+                centerTabPane.getSelectionModel().select(1); 
+            }
         });
 
         task.setOnFailed(e -> {
@@ -1166,10 +1077,7 @@ public class VideoPane extends BorderPane {
         }
     }
 
-    // ═════════════════════════════════════════════════════════════════════════
-    // Media player
-    // ═════════════════════════════════════════════════════════════════════════
-    private void loadMedia(File file) {
+private void loadMedia(File file) {
         disposePlayer();
         Media media = new Media(file.toURI().toString());
         mediaPlayer = new MediaPlayer(media);
@@ -1182,46 +1090,25 @@ public class VideoPane extends BorderPane {
         fullScrButton.setDisable(false);
         playPauseButton.setText("▶  Play");
 
+        // 1. Setup Ready State
         mediaPlayer.setOnReady(() -> {
             mediaDuration = mediaPlayer.getMedia().getDuration();
             updateTimeLabel(Duration.ZERO);
-            // capture initial frame
-            captureMediaFrame();
+            captureMediaFrame(); 
         });
 
-        // existing listener - add captureMediaFrame() call inside
+        // 2. Setup Time Ticker (Removed the heavy captureMediaFrame call from here!)
         mediaPlayer.currentTimeProperty().addListener((obs, ov, nv) -> {
             if (!seekSlider.isValueChanging() && mediaDuration != null && mediaDuration.greaterThan(Duration.ZERO)) {
                 seekSlider.setValue(nv.toMillis() / mediaDuration.toMillis() * 1000.0);
             }
             updateTimeLabel(nv);
-
-            // capture a preview frame periodically (this may be frequent)
-            captureMediaFrame();
         });
 
-        mediaPlayer.setOnReady(() -> {
-            mediaDuration = mediaPlayer.getMedia().getDuration();
-            updateTimeLabel(Duration.ZERO);
-            // capture initial frame
-            captureMediaFrame();
-        });
-
-        // existing listener - add captureMediaFrame() call inside
-        mediaPlayer.currentTimeProperty().addListener((obs, ov, nv) -> {
-            if (!seekSlider.isValueChanging() && mediaDuration != null && mediaDuration.greaterThan(Duration.ZERO)) {
-                seekSlider.setValue(nv.toMillis() / mediaDuration.toMillis() * 1000.0);
-            }
-            updateTimeLabel(nv);
-
-            // capture a preview frame periodically (this may be frequent)
-            captureMediaFrame();
-        });
-
+        // 3. Fix the Replay Bug (Use STOP instead of PAUSE)
         mediaPlayer.setOnEndOfMedia(() -> {
             playPauseButton.setText("▶  Play");
-            mediaPlayer.seek(Duration.ZERO);
-            mediaPlayer.pause();
+            mediaPlayer.stop(); // Stop resets the stream properly so it can be played again
         });
     }
 
@@ -1320,11 +1207,41 @@ public class VideoPane extends BorderPane {
         return l;
     }
 
-    private ListCell<PhotoItem> simpleCell() {
+    private ListCell<PhotoItem> thumbnailCell() {
         return new ListCell<>() {
-            @Override protected void updateItem(PhotoItem item, boolean empty) {
+            private final ImageView imageView = new ImageView();
+            private final Label label = new Label();
+            private final VBox box = new VBox(5, imageView, label);
+
+            {
+                box.setAlignment(Pos.CENTER);
+                imageView.setFitWidth(90);
+                imageView.setFitHeight(60);
+                imageView.setPreserveRatio(true);
+                label.setStyle("-fx-font-size: 10px;");
+                label.setMaxWidth(90);
+                // Add a slight hover effect for better UI feel
+                box.setOnMouseEntered(e -> box.setStyle("-fx-opacity: 0.8;"));
+                box.setOnMouseExited(e -> box.setStyle("-fx-opacity: 1.0;"));
+            }
+
+            @Override 
+            protected void updateItem(PhotoItem item, boolean empty) {
                 super.updateItem(item, empty);
-                setText(empty || item == null ? null : item.getName());
+                if (empty || item == null) {
+                    setGraphic(null);
+                } else {
+                    label.setText(item.getName());
+                    File f = new File(item.getFilePath());
+                    if (f.exists()) {
+                        // The 'true, true, true' enables smooth background loading 
+                        // so your UI never freezes while loading thumbnails!
+                        imageView.setImage(new Image(f.toURI().toString(), 90, 60, true, true, true));
+                    } else {
+                        imageView.setImage(null);
+                    }
+                    setGraphic(box);
+                }
             }
         };
     }
@@ -1346,4 +1263,53 @@ public class VideoPane extends BorderPane {
             }
         });
     }
+
+// ─── Section: Editor Sidebar (Tools moved to Right Panel) ─────────────────
+    private VBox buildEditorSidebar() {
+        Label sectionTitle = new Label("🛠 Layout Toolbox");
+        sectionTitle.setStyle("-fx-font-size: 14px; -fx-font-weight: bold;");
+
+        // 1. Add Buttons 
+        Button addTextBtn    = iconBtn("＋ Text",      () -> addVideoTextLayer());
+        Button addRectBtn    = iconBtn("＋ Rect", () -> addVideoShapeLayer(LayerType.RECTANGLE));
+        Button addEllipseBtn = iconBtn("＋ Ellipse",   () -> addVideoShapeLayer(LayerType.ELLIPSE));
+        Button addAssetBtn   = iconBtn("＋ Image",     () -> addVideoImageLayerFromFile());
+        FlowPane addBox = new FlowPane(8, 8, addTextBtn, addRectBtn, addEllipseBtn, addAssetBtn);
+
+        // 2. Styling Toolbox (Text, Font, Size, Fill)
+        GridPane styleGrid = new GridPane();
+        styleGrid.setHgap(8); styleGrid.setVgap(10);
+        styleGrid.add(new Label("Text:"), 0, 0); styleGrid.add(videoLayerTextField, 1, 0);
+        styleGrid.add(new Label("Font:"), 0, 1); styleGrid.add(videoFontFamilyBox, 1, 1);
+        styleGrid.add(new Label("Size:"), 0, 2); styleGrid.add(videoFontSizeSlider, 1, 2);
+        styleGrid.add(new Label("Fill:"), 0, 3); styleGrid.add(videoLayerFillPicker, 1, 3);
+        styleGrid.add(new Label("Stroke:"), 0, 4); styleGrid.add(videoLayerStrokePicker, 1, 4);
+        styleGrid.add(new Label("Width:"), 0, 5); styleGrid.add(videoLayerStrokeSlider, 1, 5);
+        styleGrid.add(new Label("Opacity:"), 0, 6); styleGrid.add(videoLayerOpacitySlider, 1, 6);
+        
+        videoLayerTextField.setMaxWidth(Double.MAX_VALUE);
+        videoFontFamilyBox.setMaxWidth(Double.MAX_VALUE);
+        videoLayerFillPicker.setMaxWidth(Double.MAX_VALUE);
+        videoLayerStrokePicker.setMaxWidth(Double.MAX_VALUE);
+        GridPane.setHgrow(videoLayerTextField, Priority.ALWAYS);
+
+        // 3. Action Buttons (Made Red!)
+        Button applyBtn      = iconBtn("✔ Apply",      () -> applyVideoLayerControls());
+        Button forwardBtn    = iconBtn("⬆ Fwd",       () -> moveSelectedVideoLayer(1));
+        Button backwardBtn   = iconBtn("⬇ Back",      () -> moveSelectedVideoLayer(-1));
+        Button deleteBtn     = iconBtn("🗑 Delete",    () -> deleteVideoLayer());
+        deleteBtn.getStyleClass().add("danger-button"); // RED BUTTON
+        Button clearBtn      = iconBtn("✕ Clear All",  () -> videoLayers.clear());
+        clearBtn.getStyleClass().add("danger-button"); // RED BUTTON
+        
+        FlowPane actionBox = new FlowPane(8, 8, applyBtn, forwardBtn, backwardBtn, deleteBtn, clearBtn);
+
+        // 4. Layer List
+        videoLayerList.setPrefHeight(120);
+        VBox layerListBox = new VBox(4, new Label("Layers:"), videoLayerList);
+
+        return new VBox(15, sectionTitle, new TitledPane("1. Add Layers", addBox), new TitledPane("2. ToolBox", styleGrid), actionBox, layerListBox);
+    }
+
+
 }
