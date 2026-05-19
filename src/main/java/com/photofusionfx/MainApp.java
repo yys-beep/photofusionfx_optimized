@@ -36,9 +36,10 @@ import java.util.ArrayList;
 import java.util.List;
 
 public class MainApp extends Application {
-    @Override
+@Override
     public void start(Stage stage) {
         try {
+            // 1. Initialize all background services
             DatabaseManager databaseManager = new DatabaseManager();
             LibraryService libraryService = new LibraryService(databaseManager);
             ImageProcessingService imageProcessingService = new ImageProcessingService();
@@ -61,58 +62,58 @@ public class MainApp extends Application {
             );
             context.loadInitialLibrary();
 
-            RepositoryPane repositoryPane = new RepositoryPane(context);
-            EditorPane editorPane = new EditorPane(context);
-            ExtractorPane extractorPane = new ExtractorPane(context);
-            MosaicPane mosaicPane = new MosaicPane(context);
-            VideoPane videoPane = new VideoPane(context);
-            SharePane sharePane = new SharePane(context);
-            AssetLibraryPane assetLibraryPane = new AssetLibraryPane(context);
+            // 2. Create all your Views
+            com.photofusionfx.ui.RepositoryPane repositoryPane = new com.photofusionfx.ui.RepositoryPane(context);
+            com.photofusionfx.ui.EditorPane editorPane = new com.photofusionfx.ui.EditorPane(context);
+            com.photofusionfx.ui.ExtractorPane extractorPane = new com.photofusionfx.ui.ExtractorPane(context);
+            com.photofusionfx.ui.AssetLibraryPane assetLibraryPane = new com.photofusionfx.ui.AssetLibraryPane(context);
+            com.photofusionfx.ui.MosaicPane mosaicPane = new com.photofusionfx.ui.MosaicPane(context);
+            com.photofusionfx.ui.VideoPane videoPane = new com.photofusionfx.ui.VideoPane(context);
+            com.photofusionfx.ui.SharePane sharePane = new com.photofusionfx.ui.SharePane(context);
 
+                // 3. Setup Original TabPane
             TabPane tabPane = new TabPane(
-                    new Tab("Repository", repositoryPane),
-                    new Tab("Image Editor", editorPane),
-                    new Tab("Object Extractor", extractorPane),
-                    new Tab("Asset Library", assetLibraryPane),
-                    new Tab("Mosaic Studio", mosaicPane),
-                    new Tab("Video Studio", videoPane),
-                    new Tab("Share", sharePane)
+                    new Tab("Repository", repositoryPane),      // Tab 0
+                    new Tab("Image Editor", editorPane),        // Tab 1
+                    new Tab("Object Extractor", extractorPane), // Tab 2
+                    new Tab("Mosaic Studio", mosaicPane),       // Tab 3 
+                    new Tab("Asset Library", assetLibraryPane), // Tab 4 
+                    new Tab("Video Studio", videoPane),         // Tab 5
+                    new Tab("Share", sharePane)                 // Tab 6
             );
             tabPane.getTabs().forEach(tab -> tab.setClosable(false));
 
-            // 1. When the AppContext active tab changes (e.g., clicking Share in Repo), update the TabPane
+            // 4. Contextual Deep-Linking support
             context.activeTabProperty().addListener((obs, oldVal, newVal) -> {
                 tabPane.getSelectionModel().select(newVal.intValue());
             });
 
-            // 2. When the user manually clicks a different tab, update the AppContext to match
             tabPane.getSelectionModel().selectedIndexProperty().addListener((obs, oldVal, newVal) -> {
                 context.activeTabProperty().set(newVal.intValue());
             });
 
+            // 5. Final Layout Assembly
             BorderPane root = new BorderPane();
             root.setCenter(tabPane);
             root.setBottom(createStatusBar(context));
 
-            Scene scene = new Scene(root, 1024, 768);
-            String css = getClass().getResource("/styles/app.css").toExternalForm();
-            scene.getStylesheets().add(css);
+            Scene scene = new Scene(root, 1250, 800);
+            if (getClass().getResource("/styles/app.css") != null) {
+                scene.getStylesheets().add(getClass().getResource("/styles/app.css").toExternalForm());
+            }
 
-            stage.setTitle("PhotoFusion FX");
+            stage.setTitle("PhotoFusion FX Studio");
             stage.getIcons().setAll(loadAppIcons());
             stage.setScene(scene);
             stage.setMinWidth(800);
             stage.setMinHeight(600);
             
-            // FIX: Show the window FIRST so the OS calculates its safe central position
             stage.show();
-            
-            // THEN maximize it. Now when you shrink it, it will return to the safe position!
             stage.setMaximized(true);
         } catch (Exception e) {
             Dialogs.error("Startup Error", "The application could not start.", e);
         }
-    }// end of start()
+    }
 
     private List<Image> loadAppIcons() {
         int[] sizes = {16, 24, 32, 48, 64, 128, 256};

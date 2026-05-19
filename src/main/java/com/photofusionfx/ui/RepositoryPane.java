@@ -202,28 +202,42 @@ StackPane previewBox = new StackPane(previewImageView);
         deleteButton.getStyleClass().add("danger-button");
         deleteButton.setOnAction(e -> deleteSelected());
 
-        Button shareButton = new Button("Share Photo");
-        shareButton.getStyleClass().add("primary-button");
-        shareButton.setOnAction(e -> {
-            if (context.getSelectedPhoto() == null) {
-                Dialogs.warn("No Selection", "Please select a photo to share first.");
-                return;
-            }
-            context.activeTabProperty().set(6); 
-        });
+// --- DEEP-LINKING WORKFLOW BUTTONS ---
+        Button editBtn    = new Button("Edit Photo");
+        Button extractBtn = new Button("Extract Object");
+        Button mosaicBtn  = new Button("Mosaic Photo");
+        Button shareBtn   = new Button("Share Photo");
 
-        // --- 3. REARRANGE LAYOUT ROWS ---
+        // Apply UI styling
+        editBtn.getStyleClass().add("primary-button");
+        extractBtn.getStyleClass().add("primary-button");
+        mosaicBtn.getStyleClass().add("primary-button");
+        shareBtn.getStyleClass().add("primary-button");
         
-        // Top Action Bar: Favourite Toggle is now on the left of Share
-        HBox quickActionBar = new HBox(10, favouriteToggleButton, shareButton, openLocationButton, deleteButton);
-        quickActionBar.setAlignment(Pos.CENTER_LEFT);
-        quickActionBar.setPadding(new Insets(0, 0, 8, 0));
+        editBtn.setOnAction(e -> launchWorkflow(1));    // 1 = Editor
+        extractBtn.setOnAction(e -> launchWorkflow(2)); // 2 = Extractor
+        mosaicBtn.setOnAction(e -> launchWorkflow(3));  // 3 = Mosaic (Changed back to 3)
+        shareBtn.setOnAction(e -> launchWorkflow(6));   // 6 = Share
 
-        // Annotation Action Bar: Save and Hide Overlay are now side-by-side
+        // --- REARRANGE LAYOUT ROWS ---
+        
+        // Row 1: Top Action Bar (Fav, Open Location, Delete)
+        HBox quickActionBar = new HBox(10, favouriteToggleButton, openLocationButton, deleteButton);
+        quickActionBar.setAlignment(Pos.CENTER_LEFT);
+        
+        // Row 2: Workflow Buttons (Edit, Extract, Mosaic, Share)
+        HBox workflowBar = new HBox(10, editBtn, extractBtn, mosaicBtn, shareBtn);
+        workflowBar.setAlignment(Pos.CENTER_LEFT);
+        
+        // Combine them into a single header block
+        VBox topActions = new VBox(10, quickActionBar, workflowBar);
+        topActions.setPadding(new Insets(0, 0, 10, 0)); // Padding before the image
+
+        // Annotation Action Bar
         HBox annotationActions = new HBox(10, saveAnnotationButton, toggleOverlayButton);
         annotationActions.setAlignment(Pos.CENTER_LEFT);
 
-        // Update Metadata Box (Removed favouriteCheckBox, added annotationActions)
+        // Metadata Box (Now takes up the full width below the image preview again)
         VBox metadataBox = new VBox(8,
                 labelledLine("Name", nameValue),
                 labelledLine("Path", pathValue),
@@ -231,10 +245,11 @@ StackPane previewBox = new StackPane(previewImageView);
                 new Label("Annotation"),
                 annotationArea,
                 lastModifiedLabel,
-                annotationActions // The new HBox containing Save and Toggle
+                annotationActions 
         );
 
-        detailsPanel.getChildren().addAll(quickActionBar, previewBox, metadataBox);
+        // Assemble right panel: Top Actions -> Preview -> Metadata
+        detailsPanel.getChildren().addAll(topActions, previewBox, metadataBox);
 
         ScrollPane detailsScroll = new ScrollPane(detailsPanel);
         detailsScroll.setFitToWidth(true);
@@ -529,5 +544,15 @@ StackPane previewBox = new StackPane(previewImageView);
                               "-fx-font-size: 12px; -fx-font-weight: bold;");
             tagsPane.getChildren().add(tagLabel);
         }
+    }
+
+
+    private void launchWorkflow(int targetTabIndex) {
+        PhotoItem selectedPhoto = context.getSelectedPhoto(); 
+        if (selectedPhoto == null) {
+            Dialogs.warn("No Photo Selected", "Please select a photo from the repository first.");
+            return;
+        }
+        context.activeTabProperty().set(targetTabIndex);
     }
 }
