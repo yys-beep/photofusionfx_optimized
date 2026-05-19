@@ -1,3 +1,4 @@
+// Module 3: Image mosaic generation and anti-repeat scoring
 package com.photofusionfx.service;
 
 import com.photofusionfx.util.ImageUtils;
