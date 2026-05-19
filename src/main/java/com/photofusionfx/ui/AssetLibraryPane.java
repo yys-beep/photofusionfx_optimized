@@ -24,6 +24,8 @@ import javafx.scene.layout.Priority;
 import javafx.scene.layout.Region;
 import javafx.scene.layout.VBox;
 import javafx.stage.FileChooser;
+import javafx.scene.control.Tooltip;
+import javafx.scene.control.OverrunStyle;
 
 import java.awt.Desktop;
 import java.io.File;
@@ -89,18 +91,70 @@ public class AssetLibraryPane extends BorderPane {
     }
 
     private void configureList() {
+        // Switch the selection model configuration if necessary, or keep the default
+        assetList.getSelectionModel().selectedItemProperty().addListener((obs, oldValue, item) -> updatePreview(item));
+        
+        // Define the custom graphical cell factory
         assetList.setCellFactory(list -> new ListCell<>() {
+            private final ImageView thumbnail = new ImageView();
+            private final Label nameLabel = new Label();
+            private final Label sizeLabel = new Label();
+            private final VBox cardLayout = new VBox(6);
+
+            {
+                // Configure thumbnail sizing for "Large Icon" styling
+                thumbnail.setFitWidth(80);
+                thumbnail.setFitHeight(80);
+                thumbnail.setPreserveRatio(true);
+                thumbnail.setSmooth(true);
+
+                // Configure typography wrapping and alignment
+                nameLabel.setStyle("-fx-font-weight: bold; -fx-font-size: 11px;");
+                nameLabel.setWrapText(false); // Force it to stay on exactly one line
+                nameLabel.setMaxWidth(110); // Constrain width (adjust this slightly if you want it wider/narrower)
+                nameLabel.setTextOverrun(OverrunStyle.CENTER_ELLIPSIS); // Shows "2026-05-19...d592.png"
+                nameLabel.setAlignment(Pos.CENTER);
+
+                sizeLabel.setStyle("-fx-text-fill: gray; -fx-font-size: 10px;");
+
+                // Layout components vertically inside the cell card
+                cardLayout.setAlignment(Pos.CENTER);
+                cardLayout.setPadding(new Insets(6));
+                cardLayout.getChildren().addAll(thumbnail, nameLabel, sizeLabel);
+            }
+
             @Override
             protected void updateItem(AssetItem item, boolean empty) {
                 super.updateItem(item, empty);
+
                 if (empty || item == null) {
+                    setGraphic(null);
                     setText(null);
                 } else {
-                    setText(item.getName() + "  (" + humanSize(item.getSizeBytes()) + ")");
+                    File file = item.getFile();
+                    nameLabel.setText(item.getName());
+                    nameLabel.setTooltip(new Tooltip(item.getName()));
+                    sizeLabel.setText(humanSize(item.getSizeBytes()));
+
+                    // Dynamically generate or load thumbnails based on media types
+                    if (FileUtils.isImageFile(file.toPath())) {
+                        // Load image backgrounds asynchronously (backgroundLoading = true) to prevent UI lag
+                        Image thumbImage = new Image(file.toURI().toString(), 80, 80, true, true, true);
+                        thumbnail.setImage(thumbImage);
+                    } else if (file.getName().toLowerCase().endsWith(".mp4") || 
+                               file.getName().toLowerCase().endsWith(".mov")) {
+                        // Supply a fallback systemic icon or video placeholder image
+                        thumbnail.setImage(new Image(getClass().getResourceAsStream("/icons/video-placeholder.png"), 80, 80, true, true));
+                    } else {
+                        // Generic fallback icon
+                        thumbnail.setImage(new Image(getClass().getResourceAsStream("/icons/generic-file.png"), 80, 80, true, true));
+                    }
+
+                    setGraphic(cardLayout);
+                    setText(null); // Explicitly clear old plain text representation
                 }
             }
         });
-        assetList.getSelectionModel().selectedItemProperty().addListener((obs, oldValue, item) -> updatePreview(item));
     }
 
     private void refreshAssets() {
