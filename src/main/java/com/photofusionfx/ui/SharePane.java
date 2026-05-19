@@ -31,6 +31,11 @@ import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
 import java.util.List;
 
+import javafx.scene.control.TabPane;
+import javafx.scene.control.Tab;
+import javafx.scene.control.TitledPane;
+import javafx.scene.control.ComboBox;
+
 public class SharePane extends VBox {
     private final AppContext context;
     private final Label selectedFileLabel = new Label("Selected file: none");
@@ -45,23 +50,30 @@ public class SharePane extends VBox {
     private final TextField subjectField = new TextField();
     private final TextArea bodyArea = new TextArea();
     private final ProgressIndicator sendingIndicator = new ProgressIndicator();
+    private final TextArea whatsappMessageArea = new TextArea("Ctrl+V to share the image from Photofusion ");
 
     private File selectedFile;
 
-    public SharePane(AppContext context) {
+public SharePane(AppContext context) {
         this.context = context;
-        setSpacing(12);
-        setPadding(new Insets(12));
+        setSpacing(15);
+        setPadding(new Insets(15));
 
         smtpPortSpinner.setValueFactory(new SpinnerValueFactory.IntegerSpinnerValueFactory(1, 65535, 587));
         smtpPortSpinner.setEditable(true);
-        bodyArea.setPrefRowCount(8);
+        bodyArea.setPrefRowCount(6);
         bodyArea.setWrapText(true);
         bodyArea.setPromptText("Email body...");
+        
+        // Setup new WhatsApp text area
+        whatsappMessageArea.setPrefRowCount(3);
+        whatsappMessageArea.setWrapText(true);
+
         sendingIndicator.setVisible(false);
         sendingIndicator.setPrefSize(24, 24);
 
-        getChildren().addAll(buildFileSection(), buildMailSection(), buildShareNotes());
+        // We load the file section first, then our new Tab layout
+        getChildren().addAll(buildFileSection(), buildSharingTabs());
         loadSavedConfig();
 
         context.latestExportFileProperty().addListener((obs, oldValue, newValue) -> {
@@ -90,74 +102,17 @@ public class SharePane extends VBox {
         Button chooseFileButton = new Button("Browse File");
         chooseFileButton.setOnAction(e -> browseForFile());
 
-        Button openWhatsAppButton = new Button("Open WhatsApp + Copy Actual File");
-        openWhatsAppButton.setOnAction(e -> openWhatsAppHelper());
-        openWhatsAppButton.getStyleClass().add("primary-button");
-
-        HBox row = new HBox(10, selectedFileLabel, spacer(), useSelectedPhotoButton, chooseFileButton, openWhatsAppButton);
+        // Removed the WhatsApp button from here (moved to Tab)
+        HBox row = new HBox(10, selectedFileLabel, spacer(), useSelectedPhotoButton, chooseFileButton);
         row.setAlignment(Pos.CENTER_LEFT);
         HBox.setHgrow(selectedFileLabel, Priority.ALWAYS);
 
-        VBox box = new VBox(8, new Label("Attachment / export file"), row);
+        VBox box = new VBox(8, new Label("Attachment / Export File"), row);
         box.getStyleClass().add("section-card");
         return box;
     }
 
-    private VBox buildMailSection() {
-        GridPane grid = new GridPane();
-        grid.setHgap(12);
-        grid.setVgap(10);
-        grid.add(new Label("SMTP Host"), 0, 0);
-        grid.add(smtpHostField, 1, 0);
-        grid.add(new Label("Port"), 2, 0);
-        grid.add(smtpPortSpinner, 3, 0);
-        grid.add(startTlsCheckBox, 1, 1);
-        grid.add(sslCheckBox, 2, 1);
-        grid.add(new Label("Username"), 0, 2);
-        grid.add(usernameField, 1, 2, 3, 1);
-        grid.add(new Label("Password / App Password"), 0, 3);
-        grid.add(passwordField, 1, 3, 3, 1);
-        grid.add(new Label("From"), 0, 4);
-        grid.add(fromField, 1, 4, 3, 1);
-        grid.add(new Label("To"), 0, 5);
-        grid.add(toField, 1, 5, 3, 1);
-        grid.add(new Label("Subject"), 0, 6);
-        grid.add(subjectField, 1, 6, 3, 1);
-        grid.add(new Label("Body"), 0, 7);
-        grid.add(bodyArea, 1, 7, 3, 1);
-        GridPane.setHgrow(smtpHostField, Priority.ALWAYS);
-        GridPane.setHgrow(usernameField, Priority.ALWAYS);
-        GridPane.setHgrow(passwordField, Priority.ALWAYS);
-        GridPane.setHgrow(fromField, Priority.ALWAYS);
-        GridPane.setHgrow(toField, Priority.ALWAYS);
-        GridPane.setHgrow(subjectField, Priority.ALWAYS);
-        GridPane.setHgrow(bodyArea, Priority.ALWAYS);
 
-        Button saveSettingsButton = new Button("Save Mail Settings");
-        saveSettingsButton.setOnAction(e -> saveConfig());
-        saveSettingsButton.getStyleClass().add("success-button");
-
-        Button sendButton = new Button("Send Email with Attachment");
-        sendButton.setOnAction(e -> sendEmail());
-        sendButton.getStyleClass().add("primary-button");
-
-        HBox buttons = new HBox(10, saveSettingsButton, sendButton, sendingIndicator);
-        buttons.setAlignment(Pos.CENTER_LEFT);
-
-        VBox box = new VBox(10, new Label("Email integration"), grid, buttons);
-        box.getStyleClass().add("section-card");
-        return box;
-    }
-
-    private VBox buildShareNotes() {
-        Label label = new Label(
-                "Email sends the selected image or generated video as a real MIME attachment. WhatsApp desktop/web does not expose a reliable public Java API for silently attaching local files, so this app copies the actual selected File object to the system clipboard and opens WhatsApp with the caption. Paste in the chat to attach the real file, not a path string."
-        );
-        label.setWrapText(true);
-        VBox box = new VBox(6, new Label("Sharing notes"), label);
-        box.getStyleClass().add("section-card");
-        return box;
-    }
 
     private void browseForFile() {
         FileChooser chooser = new FileChooser();
@@ -250,6 +205,121 @@ public class SharePane extends VBox {
         return config;
     }
 
+    private TabPane buildSharingTabs() {
+        TabPane tabPane = new TabPane();
+        tabPane.setTabClosingPolicy(TabPane.TabClosingPolicy.UNAVAILABLE);
+        
+        Tab emailTab = new Tab("✉ Share via Email", buildEmailContent());
+        Tab whatsappTab = new Tab("💬 Share via WhatsApp", buildWhatsAppContent());
+        
+        tabPane.getTabs().addAll(emailTab, whatsappTab);
+        VBox.setVgrow(tabPane, Priority.ALWAYS);
+        return tabPane;
+    }
+
+    private VBox buildWhatsAppContent() {
+        VBox box = new VBox(15);
+        box.setPadding(new Insets(20));
+        
+        Label instructionLabel = new Label("Customize your WhatsApp caption:");
+        instructionLabel.setStyle("-fx-font-weight: bold; -fx-font-size: 14px;");
+
+        ComboBox<String> templateBox = new ComboBox<>();
+        templateBox.setPromptText("Choose a quick template...");
+        templateBox.getItems().addAll(
+            "Hey! Check out this awesome edit I just made using PhotoFusion FX",
+            "Made this today using PhotoFusion FX. Hope you like it!",
+            "Just finished working on this! What do you think?"
+        );
+        
+        templateBox.setOnAction(e -> {
+            if (templateBox.getValue() != null) {
+                whatsappMessageArea.setText(templateBox.getValue());
+            }
+        });
+
+        Button clearButton = new Button("Clear Message");
+        clearButton.setOnAction(e -> {
+            whatsappMessageArea.clear();
+            templateBox.getSelectionModel().clearSelection();
+        });
+
+        HBox templateRow = new HBox(10, new Label("Templates:"), templateBox, clearButton);
+        templateRow.setAlignment(Pos.CENTER_LEFT);
+
+        Label pasteReminder = new Label(" After WhatsApp opens, click the chat box and press Ctrl+V (or Right-Click -> Paste) to attach your photo!");
+        pasteReminder.setStyle("-fx-text-fill: #d97706; -fx-font-weight: bold;"); 
+        pasteReminder.setWrapText(true);
+        
+        Button openWhatsAppButton = new Button("Open WhatsApp Web");
+        openWhatsAppButton.getStyleClass().add("primary-button");
+        openWhatsAppButton.setOnAction(e -> openWhatsAppHelper());
+        
+        box.getChildren().addAll(instructionLabel, templateRow, whatsappMessageArea, pasteReminder, openWhatsAppButton);
+        return box;
+    }
+
+    private VBox buildEmailContent() {
+        VBox box = new VBox(12);
+        box.setPadding(new Insets(15));
+
+        // 1. Basic Email Fields
+        GridPane basicGrid = new GridPane();
+        basicGrid.setHgap(12); basicGrid.setVgap(10);
+        basicGrid.add(new Label("From:"), 0, 0); basicGrid.add(fromField, 1, 0);
+        basicGrid.add(new Label("To:"), 0, 1); basicGrid.add(toField, 1, 1);
+        basicGrid.add(new Label("Subject:"), 0, 2); basicGrid.add(subjectField, 1, 2);
+        basicGrid.add(new Label("Body:"), 0, 3); basicGrid.add(bodyArea, 1, 3);
+        
+        GridPane.setHgrow(fromField, Priority.ALWAYS);
+        GridPane.setHgrow(toField, Priority.ALWAYS);
+        GridPane.setHgrow(subjectField, Priority.ALWAYS);
+        GridPane.setHgrow(bodyArea, Priority.ALWAYS);
+
+        // 2. Auth Settings & App Password Warning
+        VBox authBox = new VBox(8);
+        authBox.setStyle("-fx-background-color: #fff3cd; -fx-padding: 10; -fx-border-color: #ffe69c; -fx-border-radius: 5;");
+        Label warningLabel = new Label("Important: Use an App Password");
+        warningLabel.setStyle("-fx-font-weight: bold; -fx-text-fill: #856404;");
+        Label warningDesc = new Label("Do not use your normal Gmail password. Create a 16-digit 'App Password' in your Google Account Security settings.");
+        warningDesc.setWrapText(true);
+        
+        GridPane authGrid = new GridPane();
+        authGrid.setHgap(12); authGrid.setVgap(10);
+        authGrid.add(new Label("Email:"), 0, 0); authGrid.add(usernameField, 1, 0);
+        authGrid.add(new Label("App Password:"), 0, 1); authGrid.add(passwordField, 1, 1);
+        GridPane.setHgrow(usernameField, Priority.ALWAYS);
+        GridPane.setHgrow(passwordField, Priority.ALWAYS);
+        authBox.getChildren().addAll(warningLabel, warningDesc, authGrid);
+
+        // 3. Advanced SMTP Settings (Hidden by default to prevent confusion)
+        GridPane advGrid = new GridPane();
+        advGrid.setHgap(12); advGrid.setVgap(10);
+        advGrid.add(new Label("SMTP Host:"), 0, 0); advGrid.add(smtpHostField, 1, 0);
+        advGrid.add(new Label("Port:"), 2, 0); advGrid.add(smtpPortSpinner, 3, 0);
+        advGrid.add(startTlsCheckBox, 1, 1); advGrid.add(sslCheckBox, 2, 1);
+        
+        // Auto-fill Gmail defaults if empty
+        if(smtpHostField.getText().isEmpty()) smtpHostField.setText("smtp.gmail.com");
+        startTlsCheckBox.setSelected(true);
+
+        TitledPane advancedPane = new TitledPane(" Advanced SMTP Settings (Click to expand)", advGrid);
+        advancedPane.setExpanded(false); // Collapsed by default!
+
+        // 4. Buttons
+        Button saveSettingsButton = new Button("Save Settings");
+        saveSettingsButton.setOnAction(e -> saveConfig());
+        Button sendButton = new Button("Send Email with Attachment");
+        sendButton.getStyleClass().add("primary-button");
+        sendButton.setOnAction(e -> sendEmail());
+        HBox buttons = new HBox(10, saveSettingsButton, sendButton, sendingIndicator);
+        buttons.setAlignment(Pos.CENTER_LEFT);
+
+        box.getChildren().addAll(basicGrid, authBox, advancedPane, buttons);
+        return box;
+    }
+
+
     //whatsapp has no public java api for direct file injection
     private void openWhatsAppHelper() {
         if (selectedFile == null || !selectedFile.exists()) {
@@ -257,11 +327,11 @@ public class SharePane extends VBox {
             return;
         }
         try {
-            String caption = bodyArea.getText().isBlank() ? "Shared via PhotoFusion FX" : bodyArea.getText().trim();
+            // Get text from the new dedicated WhatsApp text area
+            String caption = whatsappMessageArea.getText().trim();
+            
             ClipboardContent content = new ClipboardContent();
-            //step 1: copy actualfile object to clipboard so user can paste it in ws chat
             content.putFiles(List.of(selectedFile));
-            //step 2: copy caption text so ws web pre fills the message box via wa.me URL
             content.putString(caption);
             Clipboard.getSystemClipboard().setContent(content);
 
@@ -269,9 +339,10 @@ public class SharePane extends VBox {
             if (Desktop.isDesktopSupported()) {
                 Desktop.getDesktop().browse(new URI(url));
             }
-            Dialogs.info("WhatsApp Opened", "WhatsApp was opened and the actual selected file was copied to your clipboard. Paste in the chat to attach the file itself.");
+            // Simple success dialog since we removed the long hint text
+            Dialogs.info("Ready to Paste", "WhatsApp opened. Just paste (Ctrl+V) in the chat to attach the file and message.");
         } catch (Exception ex) {
-            Dialogs.error("WhatsApp Helper Error", "Could not open the WhatsApp Web helper.", ex);
+            Dialogs.error("WhatsApp Helper Error", "Could not open WhatsApp.", ex);
         }
     }
 

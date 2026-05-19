@@ -19,6 +19,8 @@ import java.io.File;
 import java.sql.SQLException;
 import java.util.List;
 import java.util.Optional;
+import javafx.beans.property.IntegerProperty;
+import javafx.beans.property.SimpleIntegerProperty;
 
 public class AppContext {
     private final LibraryService libraryService;
@@ -29,6 +31,7 @@ public class AppContext {
     private final EmailService emailService;
     private final AssetLibraryService assetLibraryService;
     private final LayerRenderService layerRenderService;
+    private final IntegerProperty activeTabProperty = new SimpleIntegerProperty(0);
 
     private final ObservableList<PhotoItem> photoLibrary = FXCollections.observableArrayList(
             photo -> new Observable[]{photo.nameProperty(), photo.annotationProperty(), photo.favoriteProperty()}
@@ -52,6 +55,10 @@ public class AppContext {
         this.emailService = emailService;
         this.assetLibraryService = assetLibraryService;
         this.layerRenderService = layerRenderService;
+    }
+
+    public IntegerProperty activeTabProperty() {
+    return activeTabProperty;
     }
 
     public void loadInitialLibrary() throws SQLException {

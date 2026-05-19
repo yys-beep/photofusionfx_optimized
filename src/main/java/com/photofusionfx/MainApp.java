@@ -80,6 +80,16 @@ public class MainApp extends Application {
             );
             tabPane.getTabs().forEach(tab -> tab.setClosable(false));
 
+            // 1. When the AppContext active tab changes (e.g., clicking Share in Repo), update the TabPane
+            context.activeTabProperty().addListener((obs, oldVal, newVal) -> {
+                tabPane.getSelectionModel().select(newVal.intValue());
+            });
+
+            // 2. When the user manually clicks a different tab, update the AppContext to match
+            tabPane.getSelectionModel().selectedIndexProperty().addListener((obs, oldVal, newVal) -> {
+                context.activeTabProperty().set(newVal.intValue());
+            });
+
             BorderPane root = new BorderPane();
             root.setCenter(tabPane);
             root.setBottom(createStatusBar(context));
