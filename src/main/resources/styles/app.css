@@ -1,137 +1,342 @@
+/* =========================================================================
+   PHOTOFUSION FX - MODERN BLACK & PURPLE THEME
+   ========================================================================= */
+
 .root {
     -fx-font-family: "Inter", "Segoe UI", "Helvetica Neue", Arial, sans-serif;
-    -fx-base: #f4f7fb;
-    -fx-background: #f4f7fb;
-    -fx-control-inner-background: white;
+    -fx-background-color: #09090b; /* Deep black background */
+    -fx-control-inner-background: #18181b; /* Dark grey for lists/text areas */
+    -fx-text-background-color: #e4e4e7; /* Light grey text */
 }
 
 .label {
-    -fx-text-fill: #152033;
+    -fx-text-fill: #e4e4e7;
 }
 
-.status-bar {
-    -fx-background-color: linear-gradient(to right, #0f172a, #1e293b);
-}
-
-.status-bar .label {
-    -fx-text-fill: #edf2ff;
-}
-
-.preview-box {
-    -fx-background-color: white;
-    -fx-background-radius: 16;
-    -fx-border-color: #d8e0ef;
-    -fx-border-radius: 16;
-    -fx-effect: dropshadow(gaussian, rgba(15, 23, 42, 0.08), 20, 0.10, 0, 6);
-}
-
-.thumbnail-card {
-    -fx-background-color: white;
-    -fx-background-radius: 16;
-    -fx-border-color: #dce4f3;
-    -fx-border-radius: 16;
-    -fx-effect: dropshadow(gaussian, rgba(15, 23, 42, 0.05), 12, 0.08, 0, 4);
-}
-
-.selected-thumbnail {
-    -fx-border-color: #2563eb;
-    -fx-border-width: 2;
-}
-
-.thumbnail-image-box {
-    -fx-background-color: #eef3fb;
+/* --- PANELS & CARDS --- */
+/* This creates the "floating panel" look on top of the black background */
+.section-card, .surface-panel, .preview-box {
+    -fx-background-color: #121217;
     -fx-background-radius: 12;
-    -fx-border-color: #d6e0f1;
+    -fx-border-color: #27272a;
     -fx-border-radius: 12;
+    -fx-border-width: 1;
+    -fx-effect: dropshadow(gaussian, rgba(0, 0, 0, 0.4), 15, 0.2, 0, 4);
 }
 
-.thumbnail-caption {
-    -fx-font-weight: 600;
-    -fx-font-size: 12px;
-}
-
-.heart-badge {
-    -fx-text-fill: #dc2626;
-    -fx-font-size: 22px;
-    -fx-padding: 6 10 0 0;
-}
-
-.star-badge {
-    -fx-text-fill: #f59e0b;
-    -fx-font-size: 18px;
-    -fx-padding: 8 0 0 10;
-}
-
-.field-title {
-    -fx-text-fill: #64748b;
-    -fx-font-size: 11px;
-    -fx-font-weight: 700;
-}
-
+/* --- BUTTONS --- */
 .button {
-    -fx-background-color: linear-gradient(to bottom, #dcfce7, #bbf7d0);
-    -fx-border-color: #86efac;
-    -fx-border-radius: 10;
-    -fx-background-radius: 10;
-    -fx-padding: 8 14 8 14;
+    -fx-background-color: #27272a;
+    -fx-text-fill: #e4e4e7;
+    -fx-border-color: #3f3f46;
+    -fx-border-radius: 8;
+    -fx-background-radius: 8;
+    -fx-padding: 8 16;
     -fx-font-weight: 600;
+    -fx-cursor: hand;
+    -fx-transition: all 0.2s;
 }
 
 .button:hover {
-    -fx-background-color: linear-gradient(to bottom, #f0fdf4, #dcfce7);
+    -fx-background-color: #3f3f46;
 }
 
+/* Primary Action Buttons (The Dark Purple) */
+.primary-button, .success-button {
+    -fx-background-color: linear-gradient(to bottom, #7c3aed, #6d28d9);
+    -fx-border-color: #8b5cf6;
+    -fx-text-fill: white;
+}
+
+.primary-button:hover, .success-button:hover {
+    -fx-background-color: linear-gradient(to bottom, #8b5cf6, #7c3aed);
+}
+
+/* Danger Buttons (Reset/Delete) */
 .danger-button {
-    -fx-background-color: linear-gradient(to bottom, #fee2e2, #fecaca);
-    -fx-border-color: #fca5a5;
+    -fx-background-color: transparent;
+    -fx-border-color: #ef4444;
+    -fx-text-fill: #ef4444;
 }
 
 .danger-button:hover {
-    -fx-background-color: linear-gradient(to bottom, #fef2f2, #fee2e2);
+    -fx-background-color: rgba(239, 68, 68, 0.15);
 }
 
-.text-area,
-.text-field,
-.password-field,
-.combo-box,
-.spinner,
-.scroll-pane {
+/* --- SLIDERS --- */
+.slider .track {
+    -fx-background-color: #27272a;
+    -fx-background-radius: 4;
+}
+
+.slider .thumb {
+    -fx-background-color: #a78bfa; /* Vibrant purple thumb */
+    -fx-border-color: #ffffff;
+    -fx-border-width: 2;
     -fx-background-radius: 10;
     -fx-border-radius: 10;
 }
 
-.section-card {
-    -fx-background-color: white;
-    -fx-background-radius: 16;
-    -fx-border-color: #d8e0ef;
-    -fx-border-radius: 16;
-    -fx-padding: 16;
+.slider .thumb:hover {
+    -fx-background-color: #c4b5fd;
 }
 
-.success-button {
-    -fx-background-color: linear-gradient(to bottom, #dcfce7, #bbf7d0);
-    -fx-border-color: #86efac;
+/* --- INPUTS & LISTS --- */
+.text-field, .text-area, .password-field, .combo-box, .spinner, .color-picker {
+    -fx-background-color: #18181b;
+    -fx-border-color: #3f3f46;
+    -fx-border-radius: 6;
+    -fx-background-radius: 6;
+    -fx-text-fill: white;
 }
 
-.success-button:hover {
-    -fx-background-color: linear-gradient(to bottom, #f0fdf4, #dcfce7);
-}
-
-.primary-button {
-    -fx-background-color: linear-gradient(to bottom, #dcfce7, #bbf7d0);
-    -fx-border-color: #86efac;
-    -fx-border-radius: 10;
-    -fx-background-radius: 10;
-    -fx-padding: 8 14 8 14;
-    -fx-font-weight: 600;
-}
-
-.primary-button:hover {
-    -fx-background-color: linear-gradient(to bottom, #f0fdf4, #dcfce7);
+.text-field:focused, .combo-box:focused, .spinner:focused {
+    -fx-border-color: #8b5cf6; /* Purple focus ring */
 }
 
 .list-view {
-    -fx-background-radius: 12;
-    -fx-border-radius: 12;
-    -fx-border-color: #d8e0ef;
+    -fx-background-color: #121217;
+    -fx-background-radius: 8;
+    -fx-border-radius: 8;
+    -fx-border-color: #27272a;
+}
+
+.list-cell {
+    -fx-background-color: transparent;
+    -fx-text-fill: #a1a1aa;
+}
+
+.list-cell:filled:selected {
+    -fx-background-color: #3b0764; /* Deep purple highlight */
+    -fx-text-fill: white;
+    -fx-border-width: 0 0 0 3;
+    -fx-border-color: #8b5cf6;
+}
+
+.list-cell:filled:hover {
+    -fx-background-color: #27272a;
+}
+
+/* --- SCROLL PANES & SPLIT PANES --- */
+.split-pane {
+    -fx-background-color: transparent;
+}
+
+.split-pane *.split-pane-divider {
+    -fx-background-color: #18181b;
+    -fx-padding: 0 1 0 1;
+}
+
+.scroll-pane {
+    -fx-background-color: transparent;
+    -fx-control-inner-background: transparent;
+}
+
+.scroll-pane > .viewport {
+    -fx-background-color: transparent;
+}
+
+.scroll-bar:vertical, .scroll-bar:horizontal {
+    -fx-background-color: transparent;
+}
+
+.scroll-bar .thumb {
+    -fx-background-color: #3f3f46;
+    -fx-background-radius: 4;
+}
+
+.scroll-bar .thumb:hover {
+    -fx-background-color: #7c3aed;
+}
+
+.separator *.line {
+    -fx-border-color: #27272a;
+    -fx-border-width: 1 0 0 0;
+}
+
+/* =========================================================================
+   COMPONENTS THAT RESIST DARK MODE (Checkboxes, Popups, Spinners, Tabs)
+   ========================================================================= */
+
+/* --- CHECKBOXES --- */
+.check-box {
+    -fx-text-fill: #e4e4e7;
+    -fx-cursor: hand;
+}
+
+.check-box .box {
+    -fx-background-color: #18181b;
+    -fx-border-color: #3f3f46;
+    -fx-border-radius: 4;
+    -fx-background-radius: 4;
+}
+
+.check-box:hover .box {
+    -fx-border-color: #8b5cf6;
+}
+
+.check-box:selected .box {
+    -fx-background-color: #7c3aed;
+    -fx-border-color: #8b5cf6;
+}
+
+.check-box:selected .mark {
+    -fx-background-color: white;
+}
+
+/* --- COMBOBOX DROPDOWNS & COLOR PICKER POPUPS --- */
+.combo-box-popup .list-view {
+    -fx-background-color: #121217;
+    -fx-border-color: #27272a;
+    -fx-border-radius: 4;
+}
+
+.combo-box-popup .list-cell {
+    -fx-padding: 8 12;
+    -fx-text-fill: #e4e4e7;
+}
+
+.combo-box-popup .list-cell:hover {
+    -fx-background-color: #27272a;
+}
+
+.color-palette {
+    -fx-background-color: #121217;
+    -fx-border-color: #27272a;
+}
+
+/* --- SPINNER ARROWS --- */
+.spinner .increment-arrow-button,
+.spinner .decrement-arrow-button {
+    -fx-background-color: #27272a;
+    -fx-body-color: #27272a;
+}
+
+.spinner .increment-arrow-button:hover,
+.spinner .decrement-arrow-button:hover {
+    -fx-background-color: #3f3f46;
+}
+
+.spinner .increment-arrow-button .increment-arrow,
+.spinner .decrement-arrow-button .decrement-arrow {
+    -fx-background-color: #e4e4e7;
+}
+
+/* --- MAIN TABS (If you are using TabPane in MainApp) --- */
+.tab-pane .tab-header-area .tab-header-background {
+    -fx-background-color: #09090b;
+}
+
+.tab-pane .tab {
+    -fx-background-color: #121217;
+    -fx-border-color: transparent transparent transparent transparent;
+    -fx-padding: 8 20;
+    -fx-cursor: hand;
+}
+
+.tab-pane .tab:hover {
+    -fx-background-color: #18181b;
+}
+
+.tab-pane .tab-label {
+    -fx-text-fill: #a1a1aa;
+    -fx-font-weight: bold;
+}
+
+.tab-pane .tab:selected {
+    -fx-background-color: #18181b;
+    -fx-border-width: 2 0 0 0;
+    -fx-border-color: #8b5cf6 transparent transparent transparent;
+}
+
+.tab-pane .tab:selected .tab-label {
+    -fx-text-fill: #ffffff;
+}
+
+/* =========================================================================
+   MODERN TAB PANE (No Java changes needed)
+   ========================================================================= */
+.tab-pane {
+    -fx-background-color: #09090b;
+}
+
+.tab-pane .tab-header-area {
+    -fx-padding: 10 10 0 10;
+}
+
+.tab-pane .tab-header-background {
+    -fx-background-color: #09090b;
+    -fx-border-color: #27272a;
+    -fx-border-width: 0 0 1 0; /* Creates a clean bottom line under the tabs */
+}
+
+.tab-pane .tab {
+    -fx-background-color: transparent;
+    -fx-padding: 10 24 10 24;
+    -fx-cursor: hand;
+}
+
+.tab-pane .tab-label {
+    -fx-text-fill: #a1a1aa;
+    -fx-font-size: 14px;
+    -fx-font-weight: bold;
+}
+
+.tab-pane .tab:hover {
+    -fx-background-color: #121217;
+    -fx-background-radius: 8 8 0 0; /* Rounds the top corners slightly */
+}
+
+.tab-pane .tab:hover .tab-label {
+    -fx-text-fill: #e4e4e7;
+}
+
+/* The Active Tab */
+.tab-pane .tab:selected {
+    -fx-background-color: #121217;
+    -fx-border-color: #8b5cf6 transparent transparent transparent;
+    -fx-border-width: 3 0 0 0; /* Thick purple line on top */
+    -fx-background-radius: 8 8 0 0;
+}
+
+.tab-pane .tab:selected .tab-label {
+    -fx-text-fill: #ffffff;
+}
+
+.tab-pane *.tab-header-area *.control-buttons-tab {
+    -fx-opacity: 0; /* Hides the default JavaFX dropdown arrow */
+}
+
+
+/* =========================================================================
+   STUBBORN DIALOG PANES (Fixing the white pop-ups)
+   ========================================================================= */
+.dialog-pane {
+    -fx-background-color: #121217;
+    -fx-border-color: #27272a;
+    -fx-border-width: 1px;
+}
+
+.dialog-pane .label {
+    -fx-text-fill: #e4e4e7;
+}
+
+.dialog-pane .header-panel {
+    -fx-background-color: #18181b;
+    -fx-border-color: #27272a;
+    -fx-border-width: 0 0 1px 0;
+}
+
+.dialog-pane .header-panel .label {
+    -fx-font-size: 16px;
+    -fx-font-weight: bold;
+    -fx-text-fill: #ffffff;
+}
+
+.dialog-pane .content {
+    -fx-text-fill: #e4e4e7;
+}
+
+.dialog-pane .button-bar {
+    -fx-background-color: #121217;
 }
