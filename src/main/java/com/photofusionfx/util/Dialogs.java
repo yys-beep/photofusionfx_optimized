@@ -3,6 +3,7 @@ package com.photofusionfx.util;
 import javafx.scene.control.Alert;
 import javafx.scene.control.Alert.AlertType;
 import javafx.scene.control.ButtonType;
+import javafx.scene.control.DialogPane;
 import javafx.scene.control.TextArea;
 import javafx.scene.layout.Priority;
 import javafx.scene.layout.VBox;
@@ -11,10 +12,31 @@ public final class Dialogs {
     private Dialogs() {
     }
 
+    // --- HELPER METHOD TO APPLY DARK THEME ---
+    private static void applyTheme(Alert alert) {
+        DialogPane dialogPane = alert.getDialogPane();
+        try {
+            java.net.URL cssURL = Dialogs.class.getResource("/styles/app.css");
+            if (cssURL != null) {
+                dialogPane.getStylesheets().add(cssURL.toExternalForm());
+            } else {
+                System.out.println("WARNING: Could not find /styles/app.css for Dialogs.");
+            }
+        } catch (Exception e) {
+            System.err.println("Error loading stylesheet for dialog: " + e.getMessage());
+        }
+        
+        // Apply the surface-panel class to make the background dark
+        dialogPane.getStyleClass().add("surface-panel");
+    }
+
     public static void info(String title, String message) {
         Alert alert = new Alert(AlertType.INFORMATION, message, ButtonType.OK);
         alert.setTitle(title);
         alert.setHeaderText(null);
+        
+        applyTheme(alert); // Apply dark theme
+        
         alert.showAndWait();
     }
 
@@ -22,6 +44,9 @@ public final class Dialogs {
         Alert alert = new Alert(AlertType.WARNING, message, ButtonType.OK);
         alert.setTitle(title);
         alert.setHeaderText(null);
+        
+        applyTheme(alert); // Apply dark theme
+        
         alert.showAndWait();
     }
 
@@ -29,6 +54,8 @@ public final class Dialogs {
         Alert alert = new Alert(AlertType.ERROR, message, ButtonType.OK);
         alert.setTitle(title);
         alert.setHeaderText(null);
+        
+        applyTheme(alert); // Apply dark theme
 
         if (throwable != null) {
             TextArea area = new TextArea(stackTrace(throwable));

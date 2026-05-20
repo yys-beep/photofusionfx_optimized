@@ -31,8 +31,7 @@ import java.awt.image.BufferedImage;
 import java.io.File;
 import java.nio.file.Path;
 import java.util.List;
-import javafx.scene.layout.Region;
-import javafx.scene.control.ListView;
+
 
 public class EditorPane extends BorderPane {
     private final AppContext context;
@@ -227,6 +226,7 @@ public class EditorPane extends BorderPane {
                 saveToLibraryButton
         );
         controls.setPadding(new Insets(4, 16, 4, 16));
+        controls.getStyleClass().add("surface-panel");
         return controls;
     }
 
@@ -271,7 +271,7 @@ public class EditorPane extends BorderPane {
         // Asset Gallery
         javafx.scene.layout.FlowPane assetGallery = new javafx.scene.layout.FlowPane(5, 5);
         assetGallery.setPrefHeight(100);
-        assetGallery.setStyle("-fx-background-color: #f1f5f9; -fx-border-color: #cbd5e1; -fx-padding: 5;");
+        assetGallery.setStyle("-fx-background-color: #f8fafc; -fx-border-color: #e2e8f0; -fx-border-radius: 6; -fx-padding: 8;");
         loadAssetGallery(assetGallery);
 
         // Auto-refresh listener for newly extracted objects
@@ -343,6 +343,7 @@ VBox controls = new VBox(10,
                 new HBox(5, frontButton, backButton, deleteLayerButton, clearLayersButton)
         );
         controls.setPadding(new Insets(4, 16, 4, 4));
+        controls.getStyleClass().add("surface-panel");
         return controls;
     }
 
