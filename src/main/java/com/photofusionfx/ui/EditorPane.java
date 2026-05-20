@@ -31,8 +31,7 @@ import java.awt.image.BufferedImage;
 import java.io.File;
 import java.nio.file.Path;
 import java.util.List;
-import javafx.scene.control.ListView;
-import javafx.scene.layout.Region;
+
 
 public class EditorPane extends BorderPane {
     private final AppContext context;
@@ -272,7 +271,7 @@ public class EditorPane extends BorderPane {
         // Asset Gallery
         javafx.scene.layout.FlowPane assetGallery = new javafx.scene.layout.FlowPane(5, 5);
         assetGallery.setPrefHeight(100);
-        assetGallery.setStyle("-fx-background-color: #18181b; -fx-border-color: #27272a; -fx-border-radius: 6; -fx-padding: 8;");
+        assetGallery.setStyle("-fx-background-color: #f8fafc; -fx-border-color: #e2e8f0; -fx-border-radius: 6; -fx-padding: 8;");
         loadAssetGallery(assetGallery);
 
         // Auto-refresh listener for newly extracted objects

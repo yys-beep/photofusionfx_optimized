@@ -276,7 +276,7 @@ public SharePane(AppContext context) {
         GridPane.setHgrow(subjectField, Priority.ALWAYS);
         GridPane.setHgrow(bodyArea, Priority.ALWAYS);
 
-        // 2. Auth Settings & App Password Warning
+// 2. Auth Settings & App Password Warning
         VBox authBox = new VBox(8);
         authBox.setStyle("-fx-background-color: #fff3cd; -fx-padding: 10; -fx-border-color: #ffe69c; -fx-border-radius: 5;");
         Label warningLabel = new Label("Important: Use an App Password");
